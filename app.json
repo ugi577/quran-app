@@ -30,10 +30,14 @@
         "page": {
           "pages": [
             "page/gt/home/index.page",
+            "page/gt/quran_nav/index.page",
             "page/gt/surah_list/index.page",
             "page/gt/juz_list/index.page",
             "page/gt/page_list/index.page",
-            "page/gt/surah_view/index.page"
+            "page/gt/surah_view/index.page",
+            "page/gt/tasbih/index.page",
+            "page/gt/prayer_times/index.page",
+            "page/gt/qibla/index.page"
           ]
         }
       },

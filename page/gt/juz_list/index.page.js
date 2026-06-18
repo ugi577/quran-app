@@ -73,7 +73,7 @@ Page({
         x: PAD, y: itemY, w: W, h: ITEM_H,
         color: 0x000000, alpha: 1,
       });
-      tap.addEventListener(hmUI.event.CLICK_DOWN, (function(p) {
+      tap.addEventListener(hmUI.event.CLICK_UP, (function(p) {
         return function() {
           push({ url: "page/gt/surah_view/index.page", params: String(p) });
         };

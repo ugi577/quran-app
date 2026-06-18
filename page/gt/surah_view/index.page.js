@@ -2,7 +2,7 @@ import * as hmUI from "@zos/ui";
 import { log as Logger } from "@zos/utils";
 import { px } from "@zos/utils";
 import { back, replace } from "@zos/router";
-import { DEVICE_WIDTH, PAD, W, LINE_H } from "zosLoader:./index.page.[pf].layout.js";
+import { DEVICE_WIDTH, DEVICE_HEIGHT, PAD, W, LINE_H } from "zosLoader:./index.page.[pf].layout.js";
 import { readAssetJSON, toArabicNum } from "../../../utils/index.js";
 
 const logger = Logger.getLogger("surah-view");
@@ -42,33 +42,38 @@ Page({
       return;
     }
 
-    // ── Header: [↩] Hal. N · Juz M [→] ─────────────────────────────
+    // ── Header RTL: [← NEXT] [Hal. N · Juz M] [PREV →] ─────────────
+    // Mushaf Arab: halaman bertambah ke kiri — tombol kiri = maju, kanan = mundur
     const juz   = entries[0].j;
     const HDR_H = px(52);
     const BTN_W = px(54);
 
-    var btnHome = hmUI.createWidget(hmUI.widget.TEXT, {
-      x: 0, y: 0, w: BTN_W, h: HDR_H,
-      text: "↩", color: 0xFFD700, text_size: px(26),
-      align_h: hmUI.align.CENTER_H, align_v: hmUI.align.CENTER_V,
-    });
-    btnHome.addEventListener(hmUI.event.CLICK_UP, function() { back(); });
+    if (_page < MAX_PAGE) {
+      var btnNext = hmUI.createWidget(hmUI.widget.TEXT, {
+        x: PAD, y: 0, w: BTN_W, h: HDR_H,
+        text: "←", color: 0xFFD700, text_size: px(28),
+        align_h: hmUI.align.CENTER_H, align_v: hmUI.align.CENTER_V,
+      });
+      btnNext.addEventListener(hmUI.event.CLICK_UP, function() {
+        replace({ url: "page/gt/surah_view/index.page", params: String(_page + 1) });
+      });
+    }
 
     hmUI.createWidget(hmUI.widget.TEXT, {
-      x: BTN_W, y: 0, w: DEVICE_WIDTH - BTN_W * 2, h: HDR_H,
+      x: PAD + BTN_W, y: 0, w: W - BTN_W * 2, h: HDR_H,
       text: "Hal. " + _page + "  ·  Juz " + juz,
       color: 0x888888, text_size: px(17),
       align_h: hmUI.align.CENTER_H, align_v: hmUI.align.CENTER_V,
     });
 
-    if (_page < MAX_PAGE) {
-      var btnNext = hmUI.createWidget(hmUI.widget.TEXT, {
-        x: DEVICE_WIDTH - BTN_W, y: 0, w: BTN_W, h: HDR_H,
-        text: "→", color: 0xFFD700, text_size: px(26),
+    if (_page > 1) {
+      var btnPrev = hmUI.createWidget(hmUI.widget.TEXT, {
+        x: PAD + W - BTN_W, y: 0, w: BTN_W, h: HDR_H,
+        text: "→", color: 0xFFD700, text_size: px(28),
         align_h: hmUI.align.CENTER_H, align_v: hmUI.align.CENTER_V,
       });
-      btnNext.addEventListener(hmUI.event.CLICK_UP, function() {
-        replace({ url: "page/gt/surah_view/index.page", params: String(_page + 1) });
+      btnPrev.addEventListener(hmUI.event.CLICK_UP, function() {
+        replace({ url: "page/gt/surah_view/index.page", params: String(_page - 1) });
       });
     }
 
@@ -108,19 +113,19 @@ Page({
       y += ayatH + px(10);
     }
 
-    // ── Footer: [◄ prev] [↩] [next ►] ──────────────────────────────
+    // ── Footer RTL: [← NEXT] [↩] [PREV →] ──────────────────────────
     y += px(20);
     var FW = Math.floor(W / 3);
 
-    if (_page > 1) {
-      var fPrev = hmUI.createWidget(hmUI.widget.TEXT, {
+    if (_page < MAX_PAGE) {
+      var fNext = hmUI.createWidget(hmUI.widget.TEXT, {
         x: PAD, y: y, w: FW, h: px(48),
-        text: "◄ " + (_page - 1),
+        text: "← " + (_page + 1),
         color: 0xFFD700, text_size: px(20),
         align_h: hmUI.align.CENTER_H, align_v: hmUI.align.CENTER_V,
       });
-      fPrev.addEventListener(hmUI.event.CLICK_UP, function() {
-        replace({ url: "page/gt/surah_view/index.page", params: String(_page - 1) });
+      fNext.addEventListener(hmUI.event.CLICK_UP, function() {
+        replace({ url: "page/gt/surah_view/index.page", params: String(_page + 1) });
       });
     }
 
@@ -131,21 +136,43 @@ Page({
     });
     fHome.addEventListener(hmUI.event.CLICK_UP, function() { back(); });
 
-    if (_page < MAX_PAGE) {
-      var fNext = hmUI.createWidget(hmUI.widget.TEXT, {
+    if (_page > 1) {
+      var fPrev = hmUI.createWidget(hmUI.widget.TEXT, {
         x: PAD + FW * 2, y: y, w: FW, h: px(48),
-        text: (_page + 1) + " ►",
+        text: (_page - 1) + " →",
         color: 0xFFD700, text_size: px(20),
         align_h: hmUI.align.CENTER_H, align_v: hmUI.align.CENTER_V,
       });
-      fNext.addEventListener(hmUI.event.CLICK_UP, function() {
-        replace({ url: "page/gt/surah_view/index.page", params: String(_page + 1) });
+      fPrev.addEventListener(hmUI.event.CLICK_UP, function() {
+        replace({ url: "page/gt/surah_view/index.page", params: String(_page - 1) });
       });
     }
 
-    y += px(48) + px(30); // padding bawah agar footer tidak terpotong bezel
+    y += px(48) + px(30);
+
+    // ── Sidebar HOME — sisi kiri tengah ──────────────────────────────
+    // Strip gelap sepanjang konten; ↩ muncul di tengah layar saat pertama buka.
+    // Dibuat TERAKHIR agar berada di atas konten dan dapat menerima tap.
+    var SIDE_W = PAD - px(6); // pas di sebelah kiri area konten, tidak tumpang tindih
     hmUI.createWidget(hmUI.widget.FILL_RECT, {
-      x: 0, y: y, w: 1, h: 1, color: 0x000000,
+      x: 0, y: 0, w: SIDE_W, h: y,
+      color: 0x111111, alpha: 110,
+    });
+    // Ikon ↩ diposisikan di tengah layar (DEVICE_HEIGHT/2) dalam koordinat konten
+    hmUI.createWidget(hmUI.widget.TEXT, {
+      x: 0, y: Math.floor(DEVICE_HEIGHT / 2) - px(22), w: SIDE_W, h: px(44),
+      text: "↩", color: 0xFFD700, text_size: px(22),
+      align_h: hmUI.align.CENTER_H, align_v: hmUI.align.CENTER_V,
+    });
+    var homeSide = hmUI.createWidget(hmUI.widget.FILL_RECT, {
+      x: 0, y: 0, w: SIDE_W, h: y,
+      color: 0x000000, alpha: 1,
+    });
+    homeSide.addEventListener(hmUI.event.CLICK_UP, function() { back(); });
+
+    // Pixel anchor agar konten bawah tidak terpotong bezel
+    hmUI.createWidget(hmUI.widget.FILL_RECT, {
+      x: 0, y: y + px(10), w: 1, h: 1, color: 0x000000,
     });
   },
 

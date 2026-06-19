@@ -36,6 +36,7 @@
             "page/gt/page_list/index.page",
             "page/gt/surah_view/index.page",
             "page/gt/tasbih/index.page",
+            "page/gt/tasbih_setup/index.page",
             "page/gt/prayer_times/index.page",
             "page/gt/qibla/index.page"
           ]

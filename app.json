@@ -37,7 +37,9 @@
             "page/gt/surah_view/index.page",
             "page/gt/tasbih/index.page",
             "page/gt/prayer_times/index.page",
-            "page/gt/qibla/index.page"
+            "page/gt/qibla/index.page",
+            "page/gt/settings/index.page",
+            "page/gt/settings_location/index.page"
           ]
         }
       },

@@ -1,5 +1,6 @@
 // Font comparison spike (D-005) — Quran Premium
 // DESIGN-SYSTEM.md §2, §3 — tokens only, no raw hex
+import { createWidget, widget, align, text_style } from '@zos/ui'
 import { C, F } from './theme'
 
 Page({

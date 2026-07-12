@@ -1,5 +1,6 @@
 // Surah List page — Quran Premium
 // DESIGN-SYSTEM.md §7.3 — SCROLL_LIST with 114 surahs
+import { createWidget, widget, align, text_style } from '@zos/ui'
 import { C, F, safeWidth, centerX } from './theme'
 import { px } from '@zos/utils'
 import { push, back } from '@zos/router'

@@ -1,6 +1,7 @@
 // Quran Reader page — Quran Premium
 // DESIGN-SYSTEM.md §7.2
 // SCROLL_LIST body with virtualized ayat, working navigation
+import { createWidget, widget, align, text_style } from '@zos/ui'
 import { C, F, safeWidth, centerX } from './theme'
 import { px } from '@zos/utils'
 import { push, back } from '@zos/router'

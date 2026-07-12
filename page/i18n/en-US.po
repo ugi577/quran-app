@@ -1,3 +1,2 @@
-
-msgid "appName"
-msgstr "Quran App"
+msgid "example"
+msgstr "This is an example in device"

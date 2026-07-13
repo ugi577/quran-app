@@ -73,19 +73,24 @@ function readAssetText(assetPath) {
 
 /**
  * Get surah index (metadata for all 114 surahs).
- * Loaded once via static require, cached forever.
+ * Loaded once from the assets filesystem (same proven path as getSurah) —
+ * runtime require() of an asset JSON is unverified on-device (finding #6).
  */
 let surahIndex = null
 
 export function getSurahIndex() {
   if (surahIndex) return surahIndex
+  const json = readAssetText('raw/data/quran/index.json')
+  if (!json) {
+    console.error('[Quran] Failed to read surah index')
+    return []
+  }
   try {
-    // Static require — build tool resolves at bundle time
-    surahIndex = /** @type {Array} */ (require('assets/raw/data/quran/index.json'))
+    surahIndex = JSON.parse(json)
     console.log(`[Quran] Surah index loaded: ${surahIndex.length} surahs`)
     return surahIndex
   } catch (e) {
-    console.error('[Quran] Failed to load surah index:', e)
+    console.error('[Quran] Surah index JSON parse error:', e)
     return []
   }
 }

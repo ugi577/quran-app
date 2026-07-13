@@ -18,22 +18,24 @@ Page({
     createWidget(widget.CIRCLE, { center_x: CX, center_y: brandY + 12, radius: 24, color: C.bg })
     createWidget(widget.CIRCLE, { center_x: CX, center_y: brandY + 12, radius: 12, color: C.emerald })
 
-    // "QURAN" putih
+    // "QURAN" putih — slightly smaller (36px vs F.h1=44)
+    const Q_H = 36
     createWidget(widget.TEXT, {
-      x: 0, y: brandY + 56, w: 466, h: F.h1,
+      x: 0, y: brandY + 56, w: 466, h: Q_H,
       color: C.textHi,
-      text_size: F.h1,
+      text_size: Q_H,
       align_h: align.CENTER_H,
       align_v: align.CENTER_V,
       text_style: text_style.NONE,
       text: 'QURAN'
     })
 
-    // "PREMIUM" gold
+    // "PREMIUM" gold — slightly smaller (20px vs F.label=24)
+    const P_H = 20
     createWidget(widget.TEXT, {
-      x: 0, y: brandY + 56 + F.h1, w: 466, h: F.label,
+      x: 0, y: brandY + 56 + Q_H, w: 466, h: P_H,
       color: C.gold,
-      text_size: F.label,
+      text_size: P_H,
       align_h: align.CENTER_H,
       align_v: align.CENTER_V,
       text_style: text_style.NONE,
@@ -41,7 +43,7 @@ Page({
     })
 
     // ── Bismillah kecil ────────────────────────────────────────────────
-    const bismillahY = brandY + 56 + F.h1 + F.label + 12
+    const bismillahY = brandY + 56 + Q_H + P_H + 8
     createWidget(widget.TEXT, {
       x: 0, y: bismillahY, w: 466, h: 40,
       color: C.goldDim,

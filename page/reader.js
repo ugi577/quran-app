@@ -1,6 +1,5 @@
 // Quran Reader page — Quran Premium
 // DESIGN-SYSTEM.md §7.2
-// SCROLL_LIST body with virtualized ayat, working navigation
 import { createWidget, widget, align, text_style } from '@zos/ui'
 import { C, F, safeWidth, centerX } from './theme'
 import { px } from '@zos/utils'
@@ -8,9 +7,19 @@ import { push, back } from '@zos/router'
 import { getSurah, getSurahIndex } from '../src/data/quran'
 
 Page({
+  onInit(params) {
+    // push() params tiba sebagai string (JSON object di-stringify oleh router)
+    try {
+      const p = typeof params === 'string' ? JSON.parse(params) : params
+      this._surahNum = (p && p.surahNum) ? p.surahNum : null
+    } catch (e) {
+      this._surahNum = null
+    }
+  },
+
   build() {
-    // --- Load data ---
-    const surahNum = this.surahNum || 1
+    // surahNum === null → mode "lanjut baca" (last read atau surah 1)
+    const surahNum = this._surahNum || 1
     const surah = getSurah(surahNum)
     if (!surah) { this._showError('Surah not available'); return }
 
@@ -29,7 +38,7 @@ Page({
     const hdrY = px(12)
     const hdrRowH = px(48)
 
-    // Back button ←
+    // Back button
     createWidget(widget.BUTTON, {
       x: px(16), y: hdrY,
       w: px(44), h: hdrRowH,
@@ -39,14 +48,11 @@ Page({
       press_color: C.stroke,
       text: '←',
       text_size: F.h2,
-      click_func: () => {
-        console.log('[Reader] Back')
-        back()
-      },
+      click_func: () => back()
     })
 
     // Surah name (center)
-    const nameW = safeWidth(hdrY + px(6), px(F.h2), 320)
+    const nameW = safeWidth(hdrY + px(6), px(F.h2), 280)
     createWidget(widget.TEXT, {
       x: centerX(nameW), y: hdrY + px(6),
       w: nameW, h: px(F.h2),
@@ -56,7 +62,16 @@ Page({
       text: surahName,
     })
 
-    // --- Divider ---
+    // Surah number badge (top right)
+    createWidget(widget.TEXT, {
+      x: px(360), y: hdrY + px(10),
+      w: px(80), h: px(28),
+      color: C.textLo, text_size: F.caption,
+      align_h: align.RIGHT, align_v: align.CENTER_V,
+      text: `${surahNum}/114`,
+    })
+
+    // Divider
     const divY = hdrY + hdrRowH + px(4)
     const divW = safeWidth(divY, px(2))
     createWidget(widget.FILL_RECT, {
@@ -67,17 +82,13 @@ Page({
     const bodyY = divY + px(6)
     const bodyH = px(290)
     const bodyW = safeWidth(bodyY, bodyH, 396)
-    const itemH = px(84) // generous height for wrapped Arabic text
-    const bodyWInner = bodyW - px(20) // text inset from card edge
+    const itemH = px(84)
 
-    // Build data array: one object per ayah
     const listData = ayat.map(a => ({
       num: a.nomor,
       arab: a.arab,
       label: `${a.nomor}`,
     }))
-
-    const dataCount = listData.length
 
     createWidget(widget.SCROLL_LIST, {
       x: centerX(bodyW),
@@ -86,35 +97,25 @@ Page({
       h: bodyH,
       item_size: itemH,
       item_gap: px(6),
-      data_count: dataCount,
+      data_count: listData.length,
       data_array: listData,
-      data_size: dataCount * (itemH + px(6)),
+      data_size: listData.length * (itemH + px(6)),
       item_config: [
-        // Ayah number (gold, left side)
+        // Ayah number
         {
           type: 'TEXT',
           text: (item) => item.label,
-          x: px(6),
-          y: px(8),
-          w: px(32),
-          h: px(28),
-          color: C.gold,
-          text_size: F.label,
-          align_h: align.CENTER_H,
-          align_v: align.CENTER_V,
+          x: px(6), y: px(8), w: px(32), h: px(28),
+          color: C.gold, text_size: F.label,
+          align_h: align.CENTER_H, align_v: align.CENTER_V,
         },
-        // Arabic text (white, wraps across remaining width)
+        // Arabic text
         {
           type: 'TEXT',
           text: (item) => item.arab,
-          x: px(42),
-          y: px(4),
-          w: bodyWInner - px(42),
-          h: itemH - px(8),
-          color: C.textHi,
-          text_size: F.body,
-          align_h: align.LEFT,
-          align_v: align.CENTER_V,
+          x: px(42), y: px(4), w: bodyW - px(52), h: itemH - px(8),
+          color: C.textHi, text_size: F.body,
+          align_h: align.LEFT, align_v: align.CENTER_V,
           text_style: text_style.WRAP,
         },
       ],
@@ -123,15 +124,12 @@ Page({
       },
     })
 
-    console.log(`[Reader] SCROLL_LIST: ${dataCount} items`)
-
     // ======================= BOTTOM BAR =======================
     const barY = bodyY + bodyH + px(8)
     const barH = px(56)
     const barW = safeWidth(barY, barH)
     const barX = centerX(barW)
 
-    // Bar background
     createWidget(widget.FILL_RECT, {
       x: barX, y: barY, w: barW, h: barH,
       radius: px(28), color: C.surface,
@@ -141,7 +139,7 @@ Page({
     const btnH = px(44)
     const btnY = barY + px(6)
 
-    // Prev surah button
+    // Prev surah
     if (surahNum > 1) {
       createWidget(widget.BUTTON, {
         x: barX + px(12), y: btnY, w: btnW, h: btnH,
@@ -149,32 +147,26 @@ Page({
         color: C.surfacePress,
         normal_color: C.surfacePress,
         press_color: C.stroke,
-        text: '◀ Surah',
+        text: '◀',
         text_size: F.caption,
-        click_func: () => {
-          console.log(`[Reader] Prev surah → ${surahNum - 1}`)
-          push({ url: 'page/reader', params: { surahNum: surahNum - 1 } })
-        },
+        click_func: () => push({ url: 'page/reader', params: { surahNum: surahNum - 1 } })
       })
     }
 
-    // Bookmark toggle (center)
-    const bmW = px(52)
+    // Index button (center)
     createWidget(widget.BUTTON, {
-      x: barX + Math.round((barW - bmW) / 2),
-      y: btnY, w: bmW, h: btnH,
+      x: barX + Math.round((barW - px(52)) / 2),
+      y: btnY, w: px(52), h: btnH,
       radius: px(22),
       color: C.goldDim,
       normal_color: C.goldDim,
       press_color: C.gold,
-      text: '۞',
-      text_size: F.h1,
-      click_func: () => {
-        console.log(`[Reader] Bookmark: ${surahNum}:ayat`)
-      },
+      text: 'فهرس',
+      text_size: F.caption,
+      click_func: () => back()
     })
 
-    // Next surah button
+    // Next surah
     if (surahNum < 114) {
       createWidget(widget.BUTTON, {
         x: barX + barW - btnW - px(12),
@@ -183,27 +175,24 @@ Page({
         color: C.surfacePress,
         normal_color: C.surfacePress,
         press_color: C.stroke,
-        text: 'Surah ▶',
+        text: '▶',
         text_size: F.caption,
-        click_func: () => {
-          console.log(`[Reader] Next surah → ${surahNum + 1}`)
-          push({ url: 'page/reader', params: { surahNum: surahNum + 1 } })
-        },
+        click_func: () => push({ url: 'page/reader', params: { surahNum: surahNum + 1 } })
       })
     }
 
-    console.log('[Reader] build complete')
+    console.log(`[Reader] build complete — ${listData.length} ayat`)
   },
 
   onDestroy() {
-    console.log(`[Reader] onDestroy — save lastRead`)
+    console.log('[Reader] onDestroy')
   },
 
   _showError(msg) {
     createWidget(widget.FILL_RECT, { x: 0, y: 0, w: 466, h: 466, color: C.bg })
     createWidget(widget.TEXT, {
-      x: px(50), y: px(200), w: px(366), h: px(60),
-      color: C.textLo, text_size: F.body,
+      x: px(50), y: px(160), w: px(366), h: px(60),
+      color: C.gold, text_size: F.body,
       align_h: align.CENTER_H, align_v: align.CENTER_V,
       text: msg,
     })

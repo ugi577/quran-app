@@ -3,7 +3,7 @@
 import * as hmUI from '@zos/ui'
 import { px } from '@zos/utils'
 import { push } from '@zos/router'
-import { C } from './theme'
+import { C, BUILD } from './theme'
 
 // Inline helpers (mirip quran-app utils/ui.js)
 function label(text, x, y, w, h, color, size) {
@@ -100,5 +100,9 @@ Page({
         }
       })
     }
+
+    // Build marker — MUST match the round in theme.js BUILD. If the watch
+    // doesn't show this string, it is running a stale cached install.
+    label(BUILD, 0, 408, 466, 24, C.textLo, 20)
   }
 })

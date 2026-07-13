@@ -72,36 +72,14 @@ Page({
     const GAP = 12
     const gridY = dividerY + 8
 
-    const MENU = [
-      { label: 'القرآن الكريم', key: 'surah-list' },
-      { label: 'متابعة القراءة', key: 'reader' },
-      { label: 'التسبيح',        key: 'tasbih' },
-      { label: 'الإعدادات',      key: 'settings' },
-    ]
-
-    for (let i = 0; i < MENU.length; i++) {
-      const col = i % 2
-      const row = Math.floor(i / 2)
+    // ── Helper: buat 1 card ──
+    function card(col, row, label, clickFunc) {
       const cardY = gridY + row * (CARD_H + GAP)
-      const m = MENU[i]
-
       const rowW = safeWidth(cardY, CARD_H)
       const cardW = Math.floor((rowW - GAP) / 2)
       const gridW = cardW * 2 + GAP
       const gridLeft = centerX(gridW)
       const cardX = col === 0 ? gridLeft : gridLeft + cardW + GAP
-
-      // Inline dispatch — hindari closure arrow di array (QJSC issue)
-      const KEY = m.key
-      function doClick() {
-        if (KEY === 'surah-list') {
-          push({ url: 'page/surah-list' })
-        } else if (KEY === 'reader') {
-          push({ url: 'page/reader', params: { surahNum: 1 } })
-        } else {
-          console.log('[home] ' + KEY + ' tapped')
-        }
-      }
 
       createWidget(widget.BUTTON, {
         x: cardX, y: cardY, w: cardW, h: CARD_H,
@@ -109,10 +87,16 @@ Page({
         color: C.bg,
         normal_color: C.bg,
         press_color: C.stroke,
-        text: m.label,
+        text: label,
         text_size: F.bodyLg,
-        click_func: doClick
+        click_func: clickFunc
       })
     }
+
+    // 4 kartu — tiap click_func INLINE (no closure variable, no array reference)
+    card(0, 0, 'القرآن الكريم', function () { push({ url: 'page/surah-list' }) })
+    card(1, 0, 'متابعة القراءة', function () { push({ url: 'page/reader', params: { surahNum: 1 } }) })
+    card(0, 1, 'التسبيح',        function () { console.log('[home] Tasbih tapped') })
+    card(1, 1, 'الإعدادات',      function () { console.log('[home] Settings tapped') })
   }
 })

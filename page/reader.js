@@ -95,9 +95,9 @@ Page({
       x: centerX(divW), y: divY, w: divW, h: px(2), color: C.stroke,
     })
 
-    // ======================= BODY — SCROLL_LIST =======================
+    // ======================= BODY — SCROLL_LIST (expanded) =======================
     const bodyY = divY + px(6)
-    const bodyH = px(290)
+    const bodyH = px(340)  // expanded — no bottom bar
     const bodyW = safeWidth(bodyY, bodyH, 396)
     const itemH = px(84)
 
@@ -141,25 +141,18 @@ Page({
       },
     })
 
-    // ======================= BOTTOM BAR — Home | فهرس | Back =======================
-    const barY = bodyY + bodyH + px(8)
-    const barH = px(56)
-    const barW = safeWidth(barY, barH)
-    const barX = centerX(barW)
+    // ======================= SIDE BUTTONS — Home (kiri) + Back (kanan) =======================
+    // Diposisikan di tengah vertikal (y=233) agar tidak terpotong round bezel
+    const SIDE_W = px(48)
+    const SIDE_H = px(80)
+    const SIDE_Y = 193   // 233 - 80/2 = centered vertically
+    const SIDE_LEFT = px(24)
+    const SIDE_RIGHT = px(394)  // 466 - 24 - 48
 
-    createWidget(widget.FILL_RECT, {
-      x: barX, y: barY, w: barW, h: barH,
-      radius: px(28), color: C.surface,
-    })
-
-    const btnW = Math.floor((barW - px(32)) / 3)
-    const btnH = px(44)
-    const btnY = barY + px(6)
-
-    // ⌂ Home (kiri)
+    // ⌂ Home (sisi kiri)
     createWidget(widget.BUTTON, {
-      x: barX + px(8), y: btnY, w: btnW, h: btnH,
-      radius: px(22),
+      x: SIDE_LEFT, y: SIDE_Y, w: SIDE_W, h: SIDE_H,
+      radius: px(24),
       color: C.surfacePress,
       normal_color: C.surfacePress,
       press_color: C.stroke,
@@ -168,22 +161,10 @@ Page({
       click_func: () => push({ url: 'page/index' })
     })
 
-    // فهرس (tengah)
+    // ↩ Back (sisi kanan)
     createWidget(widget.BUTTON, {
-      x: barX + px(8) + btnW + px(8), y: btnY, w: btnW, h: btnH,
-      radius: px(22),
-      color: C.goldDim,
-      normal_color: C.goldDim,
-      press_color: C.gold,
-      text: 'فهرس',
-      text_size: F.caption,
-      click_func: () => back()
-    })
-
-    // ↩ Back (kanan)
-    createWidget(widget.BUTTON, {
-      x: barX + px(8) + (btnW + px(8)) * 2, y: btnY, w: btnW, h: btnH,
-      radius: px(22),
+      x: SIDE_RIGHT, y: SIDE_Y, w: SIDE_W, h: SIDE_H,
+      radius: px(24),
       color: C.surfacePress,
       normal_color: C.surfacePress,
       press_color: C.stroke,

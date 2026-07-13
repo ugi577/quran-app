@@ -59,7 +59,7 @@ Page({
 
     // ======================= SCROLL_LIST =======================
     const listY = divY + px(6)
-    const listH = px(310)  // dikurangi utk bottom nav bar
+    const listH = px(340)  // expanded — no bottom bar
     const listW = safeWidth(listY, listH, 396)
     const itemH = px(56)
 
@@ -144,25 +144,16 @@ Page({
       },
     })
 
-    // ======================= BOTTOM BAR — Home | Back =======================
-    const barY = listY + listH + px(8)
-    const barH = px(56)
-    const barW = safeWidth(barY, barH)
-    const barX = centerX(barW)
+    // ======================= SIDE BUTTONS — Home (kiri) + Back (kanan) =======================
+    const SIDE_W = px(48)
+    const SIDE_H = px(80)
+    const SIDE_Y = 193   // 233 - 80/2 = centered vertically
+    const SIDE_LEFT = px(24)
+    const SIDE_RIGHT = px(394)
 
-    createWidget(widget.FILL_RECT, {
-      x: barX, y: barY, w: barW, h: barH,
-      radius: px(28), color: C.surface,
-    })
-
-    const btnW = Math.floor((barW - px(24)) / 2)
-    const btnH = px(44)
-    const btnY = barY + px(6)
-
-    // ⌂ Home (kiri)
     createWidget(widget.BUTTON, {
-      x: barX + px(8), y: btnY, w: btnW, h: btnH,
-      radius: px(22),
+      x: SIDE_LEFT, y: SIDE_Y, w: SIDE_W, h: SIDE_H,
+      radius: px(24),
       color: C.surfacePress,
       normal_color: C.surfacePress,
       press_color: C.stroke,
@@ -171,10 +162,9 @@ Page({
       click_func: () => push({ url: 'page/index' })
     })
 
-    // ↩ Back (kanan)
     createWidget(widget.BUTTON, {
-      x: barX + px(8) + btnW + px(8), y: btnY, w: btnW, h: btnH,
-      radius: px(22),
+      x: SIDE_RIGHT, y: SIDE_Y, w: SIDE_W, h: SIDE_H,
+      radius: px(24),
       color: C.surfacePress,
       normal_color: C.surfacePress,
       press_color: C.stroke,

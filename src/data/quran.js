@@ -10,32 +10,43 @@ const surahCache = [] // { number, timestamp, data }
 // Decode UTF-8 bytes to a string.
 // String.fromCharCode per byte would be latin1 — Arabic is 2 bytes per letter
 // (U+0600–U+06FF), so that splits every letter into two junk characters.
+//
+// Code units accumulate as NUMBERS in a small buffer flushed via
+// String.fromCharCode.apply per 4096 units. The previous version pushed one
+// 1-char STRING per character — ~190k string objects for Al-Baqarah's 197KB,
+// several MB of transient heap → the OS killed the page before first paint.
+// (Chunked .apply is the pipeline quran-app has proven on this watch.)
 function utf8Decode(uint8) {
-  const out = []
   const len = uint8.length
+  const buf = []
+  let out = ''
   let i = 0
   while (i < len) {
     const b1 = uint8[i++]
     if (b1 < 0x80) {
-      out.push(String.fromCharCode(b1))
+      buf.push(b1)
     } else if ((b1 & 0xE0) === 0xC0) {
-      const b2 = uint8[i++] & 0x3F
-      out.push(String.fromCharCode(((b1 & 0x1F) << 6) | b2))
+      buf.push(((b1 & 0x1F) << 6) | (uint8[i++] & 0x3F))
     } else if ((b1 & 0xF0) === 0xE0) {
       const b2 = uint8[i++] & 0x3F
       const b3 = uint8[i++] & 0x3F
-      out.push(String.fromCharCode(((b1 & 0x0F) << 12) | (b2 << 6) | b3))
+      buf.push(((b1 & 0x0F) << 12) | (b2 << 6) | b3)
     } else if ((b1 & 0xF8) === 0xF0) {
       const b2 = uint8[i++] & 0x3F
       const b3 = uint8[i++] & 0x3F
       const b4 = uint8[i++] & 0x3F
       const cp = (((b1 & 0x07) << 18) | (b2 << 12) | (b3 << 6) | b4) - 0x10000
-      out.push(String.fromCharCode(0xD800 + (cp >> 10), 0xDC00 + (cp & 0x3FF)))
+      buf.push(0xD800 + (cp >> 10), 0xDC00 + (cp & 0x3FF))
     }
     // A stray continuation byte in lead position is dropped, not replaced with U+FFFD:
     // losing a character loudly beats emitting a wrong one silently.
+    if (buf.length >= 4096) {
+      out += String.fromCharCode.apply(null, buf)
+      buf.length = 0
+    }
   }
-  return out.join('')
+  if (buf.length) out += String.fromCharCode.apply(null, buf)
+  return out
 }
 
 // Read a text file from /assets and return its contents as a string.

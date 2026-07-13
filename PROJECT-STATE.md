@@ -9,9 +9,22 @@
 ---
 
 ## Batch
-**Batch B — P0 Reader Quran tampil penuh (master session 02) · ⏸ BERHENTI SESUAI PROTOKOL — MENUNGGU FOTO WATCH + TASHIH AHMED**
+**Batch B — P0 Reader Quran tampil penuh (master session 02) · ⏸ FIX RONDE 2 TERKIRIM — MENUNGGU UJI ULANG WATCH + TASHIH AHMED**
 
 ## Done (terbaru di atas)
+- ✅ **FIX RONDE 2 (dari uji watch Ahmed 2026-07-14):** gejala "Baqarah blank total +
+  Fatihah muncul 1-2x lalu blank" terdiagnosis sebagai SATU rantai: (a) `utf8Decode`
+  lama push 1-char-string per karakter → ~190rb string JS utk 2.json 197KB → heap
+  meledak → OS bunuh page sebelum paint = blank; (b) `gotoReader` nulis lastRead
+  SEBELUM render → begitu tap ► ke Baqarah, lastRead=2 keracunan → Continue selalu
+  mendarat di surah yang crash → "Fatihah hilang". FIX: decoder chunked
+  (`fromCharCode.apply` per 4096 unit, pipeline proven quran-app; re-verified
+  **115/115 byte-exact vs Node**, 2.json 1ms) + lastRead HANYA ditulis setelah build
+  sukses (`_renderedOK`), error path dapat chip recovery ke Fatihah. Rebuild + QR baru
+  (expire 2026-07-21 04:27). Foto Ahmed = surah-list (divider 243px + ⌂ tofu ☐ + ↩
+  emoji), BUKAN reader — konsisten dgn prediksi list body blank (P2).
+- ℹ️ **Tasbih + Settings di home BUKAN bug** — placeholder by design (P1 spec master
+  session: "Tasbih & Settings placeholder"), tap-nya memang belum ke mana-mana.
 - ✅ **P0 reader.js REWRITE TOTAL — windowed TEXT scroll (D-006).** SCROLL_LIST dibuang
   (API `item_config {type,text:fn}` terbukti karangan; lihat DECISIONS D-006). Sekarang:
   stacked TEXT + `setLayerScrolling(true)` — pola 1:1 dari `~/Projects/quran-app` yang
@@ -37,12 +50,13 @@
   home dashboard 4 kartu; icon.
 
 ## Next step
-**Ahmed:** jalankan `zeus preview -t "Amazfit Active 2 (Round)"` → scan QR → di watch uji
-urutan ini: (1) Home → "متابعة القراءة" → harus muncul Al-Fatihah 7 ayat utuh; (2) tap ►
-→ Al-Baqarah, scroll sampai bawah, tap ▼ beberapa kali (harus mulus, 42 window);
-(3) dari Fatihah tap ◄ 3× → An-Nas → Al-Falaq → Al-Ikhlas 4 ayat utuh; (4) keluar app,
-buka lagi → Continue harus mendarat di posisi terakhir; (5) **FOTO layar + tashih vs mushaf
-cetak** (gate §5 MASIH TERBUKA — jalur render berubah). Baru setelah LULUS → lanjut P1 home final.
+**Ahmed:** scan QR baru (`zeus preview -t "Amazfit Active 2 (Round)"`) → uji ulang:
+(1) Continue → sekarang harus mendarat di **Al-Baqarah** (lastRead lama = 2) dan RENDER
+(bukan blank — ini justru menguji fix decoder); (2) scroll + tap ▼ beberapa window;
+(3) tap ◄ ke Fatihah → 7 ayat utuh; (4) ◄ 2× lagi → An-Nas… sampai Al-Ikhlas 4 ayat;
+(5) keluar-masuk app → Continue mendarat di posisi terakhir; (6) **FOTO + tashih vs
+mushaf cetak** (gate §5 masih terbuka). Kalau masih blank: fotokan + cek `zeus dev`
+console utk error — hipotesis berikutnya ada di ## Bugs.
 
 ## Files touched
 `page/reader.js` (rewrite) · `page/theme.js` (+F.quran 32, F.basmalah 28) ·
@@ -50,10 +64,15 @@ cetak** (gate §5 MASIH TERBUKA — jalur render berubah). Baru setelah LULUS �
 `page/surah-list.js` (tapZone C.bg) · `DECISIONS.md` (D-006) · `.gitignore` + hapus zab lama.
 
 ## Bugs
-- **P1 — surah-list body kemungkinan besar BLANK di watch**: masih pakai SCROLL_LIST
-  `item_config {type,text:fn}` karangan (sama dgn reader lama). Header + tombol side-nya
-  hidup. Fix = rewrite pola windowed/proven saat P2. JANGAN kaget kalau list kosong saat
-  uji P0 — jalur uji P0 tidak lewat sini (pakai Continue + ◄/►).
+- **P1 — surah-list body BLANK di watch (TERKONFIRMASI foto 2026-07-14)**: SCROLL_LIST
+  `item_config {type,text:fn}` karangan + judul lebar 0 (`safeWidth(18,48)`=0, terlalu
+  dekat tepi) + glyph `⌂` = tofu ☐ di font sistem (JANGAN pakai ⌂ lagi; ↩ render sebagai
+  emoji — jelek tapi jalan). Fix = rewrite pola proven saat P2.
+- **Hipotesis cadangan kalau Baqarah MASIH blank setelah fix decoder** (urutan cek):
+  (a) `getTextLayout` di QJSC device return aneh utk string 1218 char → paksa fallback
+  estimasi (hapus try-block utk uji); (b) TEXT widget h>~1800px tidak didukung → pecah
+  ayat panjang jadi beberapa TEXT; (c) JSON.parse 197KB kelamaan → pindah parse ke
+  timeout/split file. Jangan tebak — minta console log `zeus dev` dulu.
 - **P2 — `src/ui/{layout,components,nav}.js` dead code** duplikat theme; hapus/rewire nanti.
 - **P2 — `F.small` → `F.caption`** sudah beres sesi lalu; Amiri TTF belum ada (D-005 optional).
 

@@ -26,6 +26,7 @@ const WPL_EST = 4 // est words per line at W_TXT
 // ── Module state (QJSC-safe: no closures stored in arrays) ──
 let _sn = 1 // surah 1..114
 let _ayah = 1 // first ayah to show
+let _renderedOK = false // lastRead is only written for a surah that rendered
 
 function toArabicNum(n) {
   const D = '٠١٢٣٤٥٦٧٨٩'
@@ -85,10 +86,9 @@ function saveLastRead() {
   storeSet('lastRead', { surah: _sn, ayah: _ayah, page: 1, ts: Date.now() })
 }
 
+// No saveLastRead here: writing before the target renders poisons Continue —
+// one crashing surah would trap every later open on that surah.
 function gotoReader(surahNum, ayahNum) {
-  _sn = surahNum
-  _ayah = ayahNum
-  saveLastRead()
   replace({ url: 'page/reader', params: JSON.stringify({ surahNum, ayahNum }) })
 }
 
@@ -121,6 +121,7 @@ Page({
   onInit(params) {
     _sn = 0
     _ayah = 1
+    _renderedOK = false
     try {
       const p = typeof params === 'string' ? JSON.parse(params) : params
       if (p && p.surahNum) {
@@ -142,8 +143,9 @@ Page({
 
     const surah = getSurah(_sn)
     if (!surah || !surah.ayat || surah.ayat.length === 0) {
-      label('Surah ' + _sn + ' tidak tersedia', 50, 180, 366, 60, C.gold, F.body, true)
-      chip(205, 280, 56, 56, '↩', C.textHi, function () { back() })
+      label('Surah ' + _sn + ' tidak tersedia', 50, 160, 366, 60, C.gold, F.body, true)
+      chip(125, 260, 100, 56, '↩', C.textHi, function () { back() })
+      chip(241, 260, 100, 56, '١', C.gold, function () { gotoReader(1, 1) })
       return
     }
 
@@ -160,7 +162,6 @@ Page({
     const startI = wins[wi]
     const endI = wi + 1 < wins.length ? wins[wi + 1] - 1 : n - 1
     _ayah = ayat[startI].nomor
-    saveLastRead()
 
     const prevSn = _sn > 1 ? _sn - 1 : 114
     const nextSn = _sn < 114 ? _sn + 1 : 1
@@ -225,9 +226,12 @@ Page({
     y += 68
 
     fill(0, y, 466, 24, C.bg) // bottom breathing room for the scroll extent
+
+    _renderedOK = true
+    saveLastRead()
   },
 
   onDestroy() {
-    saveLastRead()
+    if (_renderedOK) saveLastRead()
   },
 })

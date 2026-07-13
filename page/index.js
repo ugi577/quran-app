@@ -24,7 +24,7 @@ function fill(x, y, w, h, color) {
 function tapZone(x, y, w, h, cb) {
   var zone = hmUI.createWidget(hmUI.widget.FILL_RECT, {
     x, y, w, h,
-    color: 0x000000,
+    color: C.bg,
     alpha: 1,
   })
   zone.addEventListener(hmUI.event.CLICK_DOWN, cb)

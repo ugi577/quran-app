@@ -61,13 +61,14 @@ Page({
     })
 
     // ── 4 menu cards (2×2 grid) ─────────────────────────────────────────
-    // §4: Arabic-only labels, F.bodyLg, centered, no background box
-    // §3: Invisible tap target — BUTTON normal_color=C.bg (transparent on AMOLED)
+    // §4: Arabic-only labels, F.bodyLg, no background box
+    // §3: No visible card bg — BUTTON normal_color=C.bg invisible on AMOLED
     // §2: Grid centered via gridW=cardW×2+GAP, gridLeft=centerX(gridW)
-    // §1: click_func calls push() directly — BUTTON first, TEXT on top passes touch through
-    const CARD_H = 56   // single line of 30px text — was 80 for dual-line
+    // §1: BUTTON dengan text property (bawaan) — bukan TEXT widget terpisah.
+    //     TEXT widget di Zepp OS memblokir touch event ke BUTTON di bawahnya.
+    const CARD_H = 56
     const GAP = 12
-    const gridY = dividerY + 8   // tight — moved up so row 2 doesn't clip bezel
+    const gridY = dividerY + 8
 
     const MENU = [
       { label: 'القرآن الكريم', accent: C.emerald,       action: () => push({ url: 'page/surah-list' }) },
@@ -82,43 +83,31 @@ Page({
       const cardY = gridY + row * (CARD_H + GAP)
       const m = MENU[i]
 
-      // Safe chord width at this Y, then derive card width
       const rowW = safeWidth(cardY, CARD_H)
       const cardW = Math.floor((rowW - GAP) / 2)
-
-      // Center the 2-card row on screen
       const gridW = cardW * 2 + GAP
       const gridLeft = centerX(gridW)
       const cardX = col === 0 ? gridLeft : gridLeft + cardW + GAP
 
-      // §3 — Invisible tap target (BUTTON = first widget, bottom layer)
-      // normal_color = C.bg (0x000000) → invisible on AMOLED black background
-      // press_color = C.stroke → subtle brief highlight on tap
+      // §1+§3 — BUTTON sebagai tap target + label teks (text property bawaan).
+      // BUTTON harus paling atas (last widget) agar tidak tertutup widget lain
+      // yang memblokir touch. normal_color=C.bg → invisible di AMOLED.
       createWidget(widget.BUTTON, {
         x: cardX, y: cardY, w: cardW, h: CARD_H,
         radius: 12,
-        color: C.bg,
         normal_color: C.bg,
         press_color: C.stroke,
+        text: m.label,
+        text_size: F.bodyLg,
         click_func: m.action
       })
 
-      // Accent bar — left edge, on top of invisible button
+      // Accent bar — 4px strip di kiri card, DI ATAS button.
+      // Hanya tutup 4px — sisa cardW-4px tetap menerima tap dari BUTTON.
       createWidget(widget.FILL_RECT, {
         x: cardX + 1, y: cardY + 8, w: 4, h: CARD_H - 16,
         radius: 2,
         color: m.accent
-      })
-
-      // §4 — Arabic label only, centered, single line
-      createWidget(widget.TEXT, {
-        x: cardX + 12, y: cardY, w: cardW - 24, h: CARD_H,
-        color: C.textHi,
-        text_size: F.bodyLg,
-        align_h: align.CENTER_H,
-        align_v: align.CENTER_V,
-        text_style: text_style.NONE,
-        text: m.label
       })
     }
   }

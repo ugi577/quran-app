@@ -1,101 +1,104 @@
 // Home dashboard — Quran Premium
-// DESIGN-SYSTEM.md §7.1 + reference visual (commit 88d6b4b)
-import { createWidget, widget, align, text_style } from '@zos/ui'
+// Pattern from working quran-app: FILL_RECT + addEventListener(CLICK_DOWN)
+import * as hmUI from '@zos/ui'
+import { px } from '@zos/utils'
 import { push } from '@zos/router'
-import { C, F, safeWidth, centerX } from './theme'
+import { C } from './theme'
+
+// Inline helpers (mirip quran-app utils/ui.js)
+function label(text, x, y, w, h, color, size) {
+  return hmUI.createWidget(hmUI.widget.TEXT, {
+    x, y, w, h, color,
+    text_size: size,
+    text,
+    align_h: hmUI.align.CENTER_H,
+    align_v: hmUI.align.CENTER_V,
+    text_style: hmUI.text_style.NONE,
+  })
+}
+
+function fill(x, y, w, h, color) {
+  return hmUI.createWidget(hmUI.widget.FILL_RECT, { x, y, w, h, color })
+}
+
+function tapZone(x, y, w, h, cb) {
+  var zone = hmUI.createWidget(hmUI.widget.FILL_RECT, {
+    x, y, w, h,
+    color: 0x000000,
+    alpha: 1,
+  })
+  zone.addEventListener(hmUI.event.CLICK_DOWN, cb)
+  return zone
+}
+
+// Safe width helper (tetap diperlukan utk round screen)
+const CX = 233, CY = 233, R_SAFE = 213
+function safeWidth(y, h, max) {
+  const dy = Math.max(Math.abs(y - CY), Math.abs(y + h - CY))
+  if (dy >= R_SAFE) return 0
+  return Math.min(max || 400, Math.floor(2 * Math.sqrt(R_SAFE * R_SAFE - dy * dy)) - 16)
+}
+function centerX(w) { return Math.round(CX - w / 2) }
 
 Page({
   build() {
-    const CX = 233, CY = 233
+    hmUI.setLayerScrolling(false)
 
-    // ── Background (full black, AMOLED) ────────────────────────────────
-    createWidget(widget.FILL_RECT, { x: 0, y: 0, w: 466, h: 466, color: C.bg })
+    // ── Background ──
+    fill(0, 0, 466, 466, C.bg)
 
-    // ── Branding section ───────────────────────────────────────────────
+    // ── Branding ──
     const brandY = 24
-    // Ornamen: 3 lingkaran konsentris (gold r30, bg r24, emerald r12)
-    createWidget(widget.CIRCLE, { center_x: CX, center_y: brandY + 12, radius: 30, color: C.gold })
-    createWidget(widget.CIRCLE, { center_x: CX, center_y: brandY + 12, radius: 24, color: C.bg })
-    createWidget(widget.CIRCLE, { center_x: CX, center_y: brandY + 12, radius: 12, color: C.emerald })
+    hmUI.createWidget(hmUI.widget.CIRCLE, { center_x: CX, center_y: brandY + 12, radius: 30, color: C.gold })
+    hmUI.createWidget(hmUI.widget.CIRCLE, { center_x: CX, center_y: brandY + 12, radius: 24, color: C.bg })
+    hmUI.createWidget(hmUI.widget.CIRCLE, { center_x: CX, center_y: brandY + 12, radius: 12, color: C.emerald })
 
-    // "QURAN" putih — slightly smaller (36px vs F.h1=44)
-    const Q_H = 36
-    createWidget(widget.TEXT, {
-      x: 0, y: brandY + 56, w: 466, h: Q_H,
-      color: C.textHi,
-      text_size: Q_H,
-      align_h: align.CENTER_H,
-      align_v: align.CENTER_V,
-      text_style: text_style.NONE,
-      text: 'QURAN'
-    })
+    label('QURAN',   0, brandY + 56,            466, 36, C.textHi, 36)
+    label('PREMIUM', 0, brandY + 56 + 36,       466, 20, C.gold, 20)
+    label('بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ', 0, brandY + 56 + 36 + 20 + 8, 466, 40, C.goldDim, 24)
 
-    // "PREMIUM" gold — slightly smaller (20px vs F.label=24)
-    const P_H = 20
-    createWidget(widget.TEXT, {
-      x: 0, y: brandY + 56 + Q_H, w: 466, h: P_H,
-      color: C.gold,
-      text_size: P_H,
-      align_h: align.CENTER_H,
-      align_v: align.CENTER_V,
-      text_style: text_style.NONE,
-      text: 'PREMIUM'
-    })
+    // ── Divider ──
+    const divY = brandY + 56 + 36 + 20 + 8 + 40 + 8
+    const divW = safeWidth(divY, 1)
+    fill(centerX(divW), divY, divW, 1, C.stroke)
 
-    // ── Bismillah kecil ────────────────────────────────────────────────
-    const bismillahY = brandY + 56 + Q_H + P_H + 8
-    createWidget(widget.TEXT, {
-      x: 0, y: bismillahY, w: 466, h: 40,
-      color: C.goldDim,
-      text_size: 24,
-      align_h: align.CENTER_H,
-      align_v: align.CENTER_V,
-      text_style: text_style.NONE,
-      text: 'بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ'
-    })
-
-    // ── Divider ────────────────────────────────────────────────────────
-    const dividerY = bismillahY + 40 + 8  // after bismillah text + small gap
-    const dividerW = safeWidth(dividerY, 1)
-    createWidget(widget.FILL_RECT, {
-      x: centerX(dividerW), y: dividerY, w: dividerW, h: 1,
-      color: C.stroke
-    })
-
-    // ── 4 menu cards (2×2 grid) ─────────────────────────────────────────
-    // §4: Arabic-only labels, F.bodyLg, no background box
-    // §3: No visible card bg — BUTTON normal_color=C.bg invisible on AMOLED
-    // §2: Grid centered via gridW=cardW×2+GAP, gridLeft=centerX(gridW)
-    // §1: BUTTON dengan text property (bawaan) — bukan TEXT widget terpisah.
-    //     TEXT widget di Zepp OS memblokir touch event ke BUTTON di bawahnya.
+    // ── 4 menu cards (2×2 grid) ──
     const CARD_H = 56
     const GAP = 12
-    const gridY = dividerY + 8
+    const gridY = divY + 12
 
-    // ── Helper: buat 1 card ──
-    function card(col, row, label, clickFunc) {
+    const CARDS = [
+      { label: 'القرآن الكريم', url: 'page/surah-list' },
+      { label: 'متابعة القراءة', url: 'page/reader' },
+      { label: 'التسبيح',        url: null },
+      { label: 'الإعدادات',      url: null },
+    ]
+
+    for (let i = 0; i < CARDS.length; i++) {
+      const col = i % 2
+      const row = Math.floor(i / 2)
       const cardY = gridY + row * (CARD_H + GAP)
+      const c = CARDS[i]
+
       const rowW = safeWidth(cardY, CARD_H)
       const cardW = Math.floor((rowW - GAP) / 2)
       const gridW = cardW * 2 + GAP
       const gridLeft = centerX(gridW)
       const cardX = col === 0 ? gridLeft : gridLeft + cardW + GAP
 
-      createWidget(widget.BUTTON, {
-        x: cardX, y: cardY, w: cardW, h: CARD_H,
-        radius: 12,
-        normal_color: 0x111111,   // nearly-black — Zepp OS mungkin abaikan 0x000000
-        press_color: 0x333333,
-        text: label,
-        text_size: F.bodyLg,
-        click_func: clickFunc
+      // Teks card — warna accent
+      const accent = [C.emerald, C.gold, C.emeraldBright, C.textLo][i]
+      label(c.label, cardX, cardY, cardW, CARD_H, accent, 28)
+
+      // Tap zone — FILL_RECT invisible + addEventListener (PATTERN QURAN-APP)
+      const targetUrl = c.url
+      tapZone(cardX, cardY, cardW, CARD_H, function () {
+        if (targetUrl) {
+          push({ url: targetUrl })
+        } else {
+          console.log('[home] ' + c.label + ' tapped')
+        }
       })
     }
-
-    // 4 kartu — tiap click_func INLINE function
-    card(0, 0, 'القرآن الكريم', function () { push({ url: 'page/surah-list' }) })
-    card(1, 0, 'متابعة القراءة', function () { push({ url: 'page/reader', params: { surahNum: 1 } }) })
-    card(0, 1, 'التسبيح',        function () { console.log('[home] Tasbih tapped') })
-    card(1, 1, 'الإعدادات',      function () { console.log('[home] Settings tapped') })
   }
 })

@@ -51,8 +51,8 @@ Page({
       click_func: () => back()
     })
 
-    // Surah name (center) + prev/next arrows
-    const nameW = safeWidth(hdrY + px(6), px(F.h2), 220)
+    // Surah name (center)
+    const nameW = safeWidth(hdrY + px(6), px(F.h2), 300)
     createWidget(widget.TEXT, {
       x: centerX(nameW), y: hdrY + px(6),
       w: nameW, h: px(F.h2),
@@ -62,31 +62,14 @@ Page({
       text: surahName,
     })
 
-    // Prev surah ◀ (left of title)
-    if (surahNum > 1) {
-      createWidget(widget.BUTTON, {
-        x: px(70), y: hdrY + px(6),
-        w: px(36), h: px(F.h2),
-        normal_color: C.bg,
-        press_color: C.stroke,
-        text: '◀',
-        text_size: F.caption,
-        click_func: () => push({ url: 'page/reader', params: { surahNum: surahNum - 1 } })
-      })
-    }
-
-    // Next surah ▶ (right of title)
-    if (surahNum < 114) {
-      createWidget(widget.BUTTON, {
-        x: px(360), y: hdrY + px(6),
-        w: px(36), h: px(F.h2),
-        normal_color: C.bg,
-        press_color: C.stroke,
-        text: '▶',
-        text_size: F.caption,
-        click_func: () => push({ url: 'page/reader', params: { surahNum: surahNum + 1 } })
-      })
-    }
+    // Surah number badge
+    createWidget(widget.TEXT, {
+      x: px(380), y: hdrY + px(12),
+      w: px(60), h: px(24),
+      color: C.textLo, text_size: F.caption,
+      align_h: align.RIGHT, align_v: align.CENTER_V,
+      text: `${surahNum}/114`,
+    })
 
     // Divider
     const divY = hdrY + hdrRowH + px(4)

@@ -84,16 +84,15 @@ Page({
       createWidget(widget.BUTTON, {
         x: cardX, y: cardY, w: cardW, h: CARD_H,
         radius: 12,
-        color: C.bg,
-        normal_color: C.bg,
-        press_color: C.stroke,
+        normal_color: 0x111111,   // nearly-black — Zepp OS mungkin abaikan 0x000000
+        press_color: 0x333333,
         text: label,
         text_size: F.bodyLg,
         click_func: clickFunc
       })
     }
 
-    // 4 kartu — tiap click_func INLINE (no closure variable, no array reference)
+    // 4 kartu — tiap click_func INLINE function
     card(0, 0, 'القرآن الكريم', function () { push({ url: 'page/surah-list' }) })
     card(1, 0, 'متابعة القراءة', function () { push({ url: 'page/reader', params: { surahNum: 1 } }) })
     card(0, 1, 'التسبيح',        function () { console.log('[home] Tasbih tapped') })

@@ -59,7 +59,7 @@ Page({
 
     // ======================= SCROLL_LIST =======================
     const listY = divY + px(6)
-    const listH = px(380)
+    const listH = px(310)  // dikurangi utk bottom nav bar
     const listW = safeWidth(listY, listH, 396)
     const itemH = px(56)
 
@@ -142,6 +142,45 @@ Page({
         console.log(`[SurahList] Tap surah ${item.num}: ${item.nameLatin}`)
         push({ url: 'page/reader', params: { surahNum: item.num } })
       },
+    })
+
+    // ======================= BOTTOM BAR — Home | Back =======================
+    const barY = listY + listH + px(8)
+    const barH = px(56)
+    const barW = safeWidth(barY, barH)
+    const barX = centerX(barW)
+
+    createWidget(widget.FILL_RECT, {
+      x: barX, y: barY, w: barW, h: barH,
+      radius: px(28), color: C.surface,
+    })
+
+    const btnW = Math.floor((barW - px(24)) / 2)
+    const btnH = px(44)
+    const btnY = barY + px(6)
+
+    // ⌂ Home (kiri)
+    createWidget(widget.BUTTON, {
+      x: barX + px(8), y: btnY, w: btnW, h: btnH,
+      radius: px(22),
+      color: C.surfacePress,
+      normal_color: C.surfacePress,
+      press_color: C.stroke,
+      text: '⌂',
+      text_size: F.h2,
+      click_func: () => push({ url: 'page/index' })
+    })
+
+    // ↩ Back (kanan)
+    createWidget(widget.BUTTON, {
+      x: barX + px(8) + btnW + px(8), y: btnY, w: btnW, h: btnH,
+      radius: px(22),
+      color: C.surfacePress,
+      normal_color: C.surfacePress,
+      press_color: C.stroke,
+      text: '↩',
+      text_size: F.h2,
+      click_func: () => back()
     })
 
     console.log('[SurahList] build complete')

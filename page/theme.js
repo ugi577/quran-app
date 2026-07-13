@@ -9,6 +9,7 @@ export const C = {
 export const F = {
   display: 96, h1: 44, h2: 34, bodyLg: 30,
   body: 28, label: 24, caption: 24,
+  quran: 32, basmalah: 28,
 }
 
 const R_SAFE = 213, CX = 233, CY = 233

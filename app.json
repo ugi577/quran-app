@@ -12,7 +12,9 @@
     "vender": "zepp",
     "description": "Premium Quran companion for the wrist"
   },
-  "permissions": [],
+  "permissions": [
+    "device:os.local_storage"
+  ],
   "runtime": {
     "apiVersion": {
       "compatible": "3.0.0",

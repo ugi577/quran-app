@@ -51,8 +51,8 @@ Page({
       click_func: () => back()
     })
 
-    // Surah name (center)
-    const nameW = safeWidth(hdrY + px(6), px(F.h2), 280)
+    // Surah name (center) + prev/next arrows
+    const nameW = safeWidth(hdrY + px(6), px(F.h2), 220)
     createWidget(widget.TEXT, {
       x: centerX(nameW), y: hdrY + px(6),
       w: nameW, h: px(F.h2),
@@ -62,14 +62,31 @@ Page({
       text: surahName,
     })
 
-    // Surah number badge (top right)
-    createWidget(widget.TEXT, {
-      x: px(360), y: hdrY + px(10),
-      w: px(80), h: px(28),
-      color: C.textLo, text_size: F.caption,
-      align_h: align.RIGHT, align_v: align.CENTER_V,
-      text: `${surahNum}/114`,
-    })
+    // Prev surah ◀ (left of title)
+    if (surahNum > 1) {
+      createWidget(widget.BUTTON, {
+        x: px(70), y: hdrY + px(6),
+        w: px(36), h: px(F.h2),
+        normal_color: C.bg,
+        press_color: C.stroke,
+        text: '◀',
+        text_size: F.caption,
+        click_func: () => push({ url: 'page/reader', params: { surahNum: surahNum - 1 } })
+      })
+    }
+
+    // Next surah ▶ (right of title)
+    if (surahNum < 114) {
+      createWidget(widget.BUTTON, {
+        x: px(360), y: hdrY + px(6),
+        w: px(36), h: px(F.h2),
+        normal_color: C.bg,
+        press_color: C.stroke,
+        text: '▶',
+        text_size: F.caption,
+        click_func: () => push({ url: 'page/reader', params: { surahNum: surahNum + 1 } })
+      })
+    }
 
     // Divider
     const divY = hdrY + hdrRowH + px(4)
@@ -124,7 +141,7 @@ Page({
       },
     })
 
-    // ======================= BOTTOM BAR =======================
+    // ======================= BOTTOM BAR — Home | فهرس | Back =======================
     const barY = bodyY + bodyH + px(8)
     const barH = px(56)
     const barW = safeWidth(barY, barH)
@@ -135,28 +152,25 @@ Page({
       radius: px(28), color: C.surface,
     })
 
-    const btnW = px(80)
+    const btnW = Math.floor((barW - px(32)) / 3)
     const btnH = px(44)
     const btnY = barY + px(6)
 
-    // Prev surah
-    if (surahNum > 1) {
-      createWidget(widget.BUTTON, {
-        x: barX + px(12), y: btnY, w: btnW, h: btnH,
-        radius: px(22),
-        color: C.surfacePress,
-        normal_color: C.surfacePress,
-        press_color: C.stroke,
-        text: '◀',
-        text_size: F.caption,
-        click_func: () => push({ url: 'page/reader', params: { surahNum: surahNum - 1 } })
-      })
-    }
-
-    // Index button (center)
+    // ⌂ Home (kiri)
     createWidget(widget.BUTTON, {
-      x: barX + Math.round((barW - px(52)) / 2),
-      y: btnY, w: px(52), h: btnH,
+      x: barX + px(8), y: btnY, w: btnW, h: btnH,
+      radius: px(22),
+      color: C.surfacePress,
+      normal_color: C.surfacePress,
+      press_color: C.stroke,
+      text: '⌂',
+      text_size: F.h2,
+      click_func: () => push({ url: 'page/index' })
+    })
+
+    // فهرس (tengah)
+    createWidget(widget.BUTTON, {
+      x: barX + px(8) + btnW + px(8), y: btnY, w: btnW, h: btnH,
       radius: px(22),
       color: C.goldDim,
       normal_color: C.goldDim,
@@ -166,20 +180,17 @@ Page({
       click_func: () => back()
     })
 
-    // Next surah
-    if (surahNum < 114) {
-      createWidget(widget.BUTTON, {
-        x: barX + barW - btnW - px(12),
-        y: btnY, w: btnW, h: btnH,
-        radius: px(22),
-        color: C.surfacePress,
-        normal_color: C.surfacePress,
-        press_color: C.stroke,
-        text: '▶',
-        text_size: F.caption,
-        click_func: () => push({ url: 'page/reader', params: { surahNum: surahNum + 1 } })
-      })
-    }
+    // ↩ Back (kanan)
+    createWidget(widget.BUTTON, {
+      x: barX + px(8) + (btnW + px(8)) * 2, y: btnY, w: btnW, h: btnH,
+      radius: px(22),
+      color: C.surfacePress,
+      normal_color: C.surfacePress,
+      press_color: C.stroke,
+      text: '↩',
+      text_size: F.h2,
+      click_func: () => back()
+    })
 
     console.log(`[Reader] build complete — ${listData.length} ayat`)
   },

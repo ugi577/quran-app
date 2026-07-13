@@ -101,14 +101,6 @@ Page({
         text_size: F.bodyLg,
         click_func: m.action
       })
-
-      // Accent bar — 4px strip di kiri card, DI ATAS button.
-      // Hanya tutup 4px — sisa cardW-4px tetap menerima tap dari BUTTON.
-      createWidget(widget.FILL_RECT, {
-        x: cardX + 1, y: cardY + 8, w: 4, h: CARD_H - 16,
-        radius: 2,
-        color: m.accent
-      })
     }
   }
 })

@@ -12,6 +12,17 @@
 **Batch B — P0 Reader Quran tampil penuh (master session 02) · ⏸ FIX RONDE 2 TERKIRIM — MENUNGGU UJI ULANG WATCH + TASHIH AHMED**
 
 ## Done (terbaru di atas)
+- 🔬 **RONDE 4 — b4 DIAGNOSIS (2026-07-14, `bd35ffd`):** b3 TERBUKTI terpasang (marker
+  tampil) tapi reader tetap mati total; home hidup. Analisis graph import: satu-satunya
+  modul di reader yang BELUM PERNAH terbukti load di watch = `src/data/store`
+  (`@zos/storage`) — reader lama (tanpa store) pernah render side-buttons, surah-list
+  lama (tanpa store) pernah render header, home (tanpa store) hidup sekarang. b4 =
+  bisection satu ronde: (a) reader TANPA storage + flight recorder — marker `r-b4` kiri
+  tengah + breadcrumb tahap (`load2`→`win`→`hdr`→`bsm`→`aN`→`ftr`→`ok`) + SEMUA exception
+  dirender ke layar (`ERR @tahap: pesan`); (b) surah-list = host probe storage, menulis
+  `b4 STORAGE OK (sX:aY)` / `b4 STORAGE ERR: …` di layar; kalau halamannya MATI TOTAL
+  (probe tak muncul) = import @zos/storage fatal di runtime. v1.0.2 code 3. Verified:
+  `b4` ada di ketiga page .bin, `code:3` di zpk. **Matriks vonis di ## Bugs.**
 - ✅ **RONDE 3 — HIPOTESIS CACHE INSTALL (2026-07-14):** uji ronde 2 Ahmed = SEMUA layar
   identik piksel ("sprt tdk ada perubahan") → watch diduga kuat masih menjalankan paket
   LAMA. Zepp App men-cache install per appId+version dan version TIDAK PERNAH di-bump
@@ -58,13 +69,14 @@
   home dashboard 4 kartu; icon.
 
 ## Next step
-**Ahmed, urutannya penting:** (1) **HAPUS dulu Quran Premium dari watch** (Zepp App →
-profil → perangkat → Mini program / atau long-press icon di watch → uninstall);
-(2) `zeus preview -t "Amazfit Active 2 (Round)"` → scan QR; (3) buka app → **cek bawah
-home ada tulisan kecil `b3`** — TIDAK ADA `b3` = masih build basi, STOP, laporkan;
-(4) baru uji: Continue → Al-Baqarah harus RENDER; ▼ antar window; ◄ ke Fatihah 7 ayat;
-sampai Al-Ikhlas; keluar-masuk → Continue nyambung; (5) FOTO + tashih (gate §5).
-Masih blank PADAHAL `b3` tampil → fotokan + console `zeus dev`; hipotesis lanjutan di ## Bugs.
+**Ahmed (b4 = ronde diagnosis, butuh 2 FOTO):** (1) hapus app dari watch → scan QR baru
+→ home harus tulis `b4`; (2) **FOTO 1:** tap **القرآن الكريم** (surah-list) → foto layar
+— yang dicari: baris `b4 STORAGE OK/ERR …` di tengah-bawah, ATAU halaman mati total;
+(3) **FOTO 2:** balik ke home, tap **متابعة القراءة** (reader) → foto layar — yang
+dicari: teks kecil `r-b4 <tahap>` di kiri-tengah + kalau ada, kotak `ERR @…`.
+Interpretasi cepat: reader hidup normal = storage-lah tersangkanya (b5 pasang balik
+dgn guard); reader tampil `ERR @tahap` = akar persisnya ketahuan; `r-b4 aN` beku tanpa
+ERR = crash native di ayat N; surah-list mati total = import @zos/storage fatal.
 
 ## Files touched
 `page/reader.js` (rewrite) · `page/theme.js` (+F.quran 32, F.basmalah 28) ·

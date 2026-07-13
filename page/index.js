@@ -73,10 +73,10 @@ Page({
     const gridY = dividerY + 8
 
     const MENU = [
-      { label: 'القرآن الكريم', accent: C.emerald,       action: () => push({ url: 'page/surah-list' }) },
-      { label: 'متابعة القراءة', accent: C.gold,          action: () => push({ url: 'page/reader', params: { surahNum: 1 } }) },
-      { label: 'التسبيح',        accent: C.emeraldBright, action: () => console.log('[home] Tasbih tapped') },
-      { label: 'الإعدادات',      accent: C.textLo,        action: () => console.log('[home] Settings tapped') },
+      { label: 'القرآن الكريم', key: 'surah-list' },
+      { label: 'متابعة القراءة', key: 'reader' },
+      { label: 'التسبيح',        key: 'tasbih' },
+      { label: 'الإعدادات',      key: 'settings' },
     ]
 
     for (let i = 0; i < MENU.length; i++) {
@@ -91,17 +91,27 @@ Page({
       const gridLeft = centerX(gridW)
       const cardX = col === 0 ? gridLeft : gridLeft + cardW + GAP
 
-      // §1+§3 — BUTTON sebagai tap target + label teks (text property bawaan).
-      // BUTTON harus paling atas (last widget) agar tidak tertutup widget lain
-      // yang memblokir touch. normal_color=C.bg → invisible di AMOLED.
+      // Inline dispatch — hindari closure arrow di array (QJSC issue)
+      const KEY = m.key
+      function doClick() {
+        if (KEY === 'surah-list') {
+          push({ url: 'page/surah-list' })
+        } else if (KEY === 'reader') {
+          push({ url: 'page/reader', params: { surahNum: 1 } })
+        } else {
+          console.log('[home] ' + KEY + ' tapped')
+        }
+      }
+
       createWidget(widget.BUTTON, {
         x: cardX, y: cardY, w: cardW, h: CARD_H,
         radius: 12,
+        color: C.bg,
         normal_color: C.bg,
         press_color: C.stroke,
         text: m.label,
         text_size: F.bodyLg,
-        click_func: m.action
+        click_func: doClick
       })
     }
   }

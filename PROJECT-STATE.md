@@ -12,6 +12,14 @@
 **Batch B — P0 Reader Quran tampil penuh (master session 02) · ⏸ FIX RONDE 2 TERKIRIM — MENUNGGU UJI ULANG WATCH + TASHIH AHMED**
 
 ## Done (terbaru di atas)
+- ✅ **RONDE 3 — HIPOTESIS CACHE INSTALL (2026-07-14):** uji ronde 2 Ahmed = SEMUA layar
+  identik piksel ("sprt tdk ada perubahan") → watch diduga kuat masih menjalankan paket
+  LAMA. Zepp App men-cache install per appId+version dan version TIDAK PERNAH di-bump
+  sepanjang batch-b → kemungkinan semua uji touch berhari-hari kemarin menguji build basi.
+  FIX: version → **1.0.1 / code 2** + **penanda build `BUILD='b3'`** (theme.js) dirender
+  di bawah home. Verified dalam paket: manifest 1.0.1, code:2 di 7 zpk, string `b3` ada
+  di `index.bin`. **Protokol baru: layar home TANPA tulisan `b3` = install basi, uji
+  tidak sah.** Tiap ronde preview berikutnya WAJIB bump BUILD + version code.
 - ✅ **FIX RONDE 2 (dari uji watch Ahmed 2026-07-14):** gejala "Baqarah blank total +
   Fatihah muncul 1-2x lalu blank" terdiagnosis sebagai SATU rantai: (a) `utf8Decode`
   lama push 1-char-string per karakter → ~190rb string JS utk 2.json 197KB → heap
@@ -50,13 +58,13 @@
   home dashboard 4 kartu; icon.
 
 ## Next step
-**Ahmed:** scan QR baru (`zeus preview -t "Amazfit Active 2 (Round)"`) → uji ulang:
-(1) Continue → sekarang harus mendarat di **Al-Baqarah** (lastRead lama = 2) dan RENDER
-(bukan blank — ini justru menguji fix decoder); (2) scroll + tap ▼ beberapa window;
-(3) tap ◄ ke Fatihah → 7 ayat utuh; (4) ◄ 2× lagi → An-Nas… sampai Al-Ikhlas 4 ayat;
-(5) keluar-masuk app → Continue mendarat di posisi terakhir; (6) **FOTO + tashih vs
-mushaf cetak** (gate §5 masih terbuka). Kalau masih blank: fotokan + cek `zeus dev`
-console utk error — hipotesis berikutnya ada di ## Bugs.
+**Ahmed, urutannya penting:** (1) **HAPUS dulu Quran Premium dari watch** (Zepp App →
+profil → perangkat → Mini program / atau long-press icon di watch → uninstall);
+(2) `zeus preview -t "Amazfit Active 2 (Round)"` → scan QR; (3) buka app → **cek bawah
+home ada tulisan kecil `b3`** — TIDAK ADA `b3` = masih build basi, STOP, laporkan;
+(4) baru uji: Continue → Al-Baqarah harus RENDER; ▼ antar window; ◄ ke Fatihah 7 ayat;
+sampai Al-Ikhlas; keluar-masuk → Continue nyambung; (5) FOTO + tashih (gate §5).
+Masih blank PADAHAL `b3` tampil → fotokan + console `zeus dev`; hipotesis lanjutan di ## Bugs.
 
 ## Files touched
 `page/reader.js` (rewrite) · `page/theme.js` (+F.quran 32, F.basmalah 28) ·

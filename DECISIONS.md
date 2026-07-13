@@ -4,6 +4,28 @@ Newest entry on top.
 
 ---
 
+## 2026-07-14 — Batch B (P0 reader) — D-007 — Storage = class `LocalStorage`, console.log-only, glyph Arab-only
+**Context.** Ronde diagnosis b4 (2 foto watch): reader TANPA storage render SEMPURNA
+(Fatihah utuh, Arab benar); probe storage di surah-list menulis
+`b4 STORAGE ERR: TypeError: not a function`.
+**Akar.** (1) Instance `localStorage` dari `@zos/storage` TIDAK ada di runtime apiVersion
+3.0 (d.ts: instance tanpa `@version`; class `LocalStorage` eksplisit `@version 3.0`).
+(2) Kematian total reader b3: `storeGet` di `onInit` melempar — TypeError storage dan/atau
+`console.error` di blok catch store.js yang juga bukan fungsi → halaman mati sebelum widget
+pertama. (3) Foto b4 juga membuktikan `◄ ► ⌂` = tofu ☐; yang render: teks Arab, angka
+Arab-Indic, `﴿ ﴾`, `↩` (emoji), Latin.
+**Choice.**
+- `store.js`: backend utama `new LocalStorage()`, fallback instance, fallback terakhir
+  no-op yang mengembalikan default — **store tidak pernah melempar ke pemanggil**.
+- Seluruh repo: **hanya `console.log`** (AGENTS §3.13).
+- Chip nav reader: kata Arab (`السابقة/التالية/تابع/أعلى`), bukan glyph panah (AGENTS §3.14).
+- Tombol keluar reader = `replace` ke `page/index` (laporan Ahmed: `back()` setelah rantai
+  `replace()` tidak berfungsi); back sistem = swipe kanan.
+- Flight recorder reader (marker `r-bN` + stage + catch→layar) dipertahankan s/d gate P0.
+**Consequence.** lastRead aktif lagi di b5; probe surah-list kini menulis backend yang
+menang: `b5 STORE[class] OK s1:a1` = bukti akhir. Protokol bump `BUILD`+`version.code`
+tiap ronde jadi aturan mati (AGENTS §3.15).
+
 ## 2026-07-14 — Batch B (P0 reader) — D-006 — Reader = windowed TEXT scroll, BUKAN SCROLL_LIST
 **Context.** Master session P0 menyebut "SCROLL_LIST data_array" untuk ayat. Fakta di lapangan:
 - `item_config` bentuk `{type:'TEXT', text: function(item)…}` yang dipakai batch-b adalah **API

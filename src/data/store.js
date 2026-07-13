@@ -1,7 +1,51 @@
-// Data store wrapper for @zos/storage localStorage
+// Data store wrapper for @zos/storage.
 // All keys are namespaced under 'qp.*' and versioned for migration.
+//
+// BUKTI WATCH b4 (foto 2026-07-14): `localStorage.getItem` = "TypeError: not a
+// function" di runtime apiVersion 3.0 — instance `localStorage` TIDAK diberi
+// @version di d.ts, sedangkan class `LocalStorage` eksplisit @version 3.0.
+// Maka backend utama = new LocalStorage(); instance kecil jadi cadangan; kalau
+// dua-duanya mati, store jadi no-op yang mengembalikan default — TIDAK PERNAH
+// melempar ke pemanggil (kematian b3: storeGet melempar di onInit reader).
+//
+// Juga: HANYA console.log di file ini. console.error/warn tidak terbukti ada
+// di runtime — throw di dalam catch adalah cara b3 mati.
 
-import { localStorage } from '@zos/storage'
+import { localStorage, LocalStorage } from '@zos/storage'
+
+let _backend = null
+let _backendName = ''
+
+function backend() {
+  if (_backendName) return _backend
+  try {
+    const ls = new LocalStorage()
+    if (ls && typeof ls.getItem === 'function') {
+      _backend = ls
+      _backendName = 'class'
+      return _backend
+    }
+  } catch (e) {
+    console.log('[Store] LocalStorage class unavailable: ' + e)
+  }
+  try {
+    if (localStorage && typeof localStorage.getItem === 'function') {
+      _backend = localStorage
+      _backendName = 'instance'
+      return _backend
+    }
+  } catch (e) {
+    console.log('[Store] localStorage instance unavailable: ' + e)
+  }
+  _backend = null
+  _backendName = 'none'
+  return _backend
+}
+
+export function getBackendName() {
+  backend()
+  return _backendName
+}
 
 const STORE_PREFIX = 'qp.'
 const STORE_VERSION = 1
@@ -86,13 +130,16 @@ function nsKey(key) {
 export function get(key) {
   const schema = SCHEMA[key]
   if (!schema) {
-    console.warn(`[Store] Unknown key: ${key}`)
+    console.log(`[Store] Unknown key: ${key}`)
     return null
   }
 
   try {
-    const raw = localStorage.getItem(nsKey(key))
-    if (raw === null || raw === '') {
+    const be = backend()
+    if (!be) return schema.default
+
+    const raw = be.getItem(nsKey(key))
+    if (raw === null || raw === undefined || raw === '') {
       return schema.default
     }
 
@@ -105,7 +152,7 @@ export function get(key) {
 
     return parsed
   } catch (e) {
-    console.error(`[Store] Error reading ${key}:`, e)
+    console.log(`[Store] Error reading ${key}: ` + e)
     return schema.default
   }
 }
@@ -118,26 +165,30 @@ export function get(key) {
 export function set(key, value) {
   const schema = SCHEMA[key]
   if (!schema) {
-    console.warn(`[Store] Unknown key: ${key}`)
+    console.log(`[Store] Unknown key: ${key}`)
     return
   }
 
   try {
-    localStorage.setItem(nsKey(key), JSON.stringify(value))
+    const be = backend()
+    if (!be) return
+    be.setItem(nsKey(key), JSON.stringify(value))
   } catch (e) {
-    console.error(`[Store] Error writing ${key}:`, e)
+    console.log(`[Store] Error writing ${key}: ` + e)
   }
 }
 
 /**
- * Delete a key from localStorage.
+ * Delete a key from storage.
  * @param {string} key - Storage key (without prefix)
  */
 export function del(key) {
   try {
-    localStorage.removeItem(nsKey(key))
+    const be = backend()
+    if (!be) return
+    be.removeItem(nsKey(key))
   } catch (e) {
-    console.error(`[Store] Error deleting ${key}:`, e)
+    console.log(`[Store] Error deleting ${key}: ` + e)
   }
 }
 

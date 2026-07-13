@@ -8,7 +8,7 @@ import { px } from '@zos/utils'
 import { push, back } from '@zos/router'
 import { C, BUILD } from './theme'
 import { getSurahIndex } from '../src/data/quran'
-import { get as storeGet, set as storeSet } from '../src/data/store'
+import { get as storeGet, set as storeSet, getBackendName } from '../src/data/store'
 
 const CX = 233, R_SAFE = 213
 function safeWidth(y, h, max) {
@@ -51,10 +51,10 @@ Page({
       storeSet('lastRead', (lr && lr.surah) ? lr : { surah: 1, ayah: 1, page: 1, ts: 0 })
       var lr2 = storeGet('lastRead')
       probeMsg = (lr2 && lr2.surah)
-        ? BUILD + ' STORAGE OK (s' + lr2.surah + ':a' + lr2.ayah + ')'
-        : BUILD + ' STORAGE BACA GAGAL'
+        ? BUILD + ' STORE[' + getBackendName() + '] OK s' + lr2.surah + ':a' + lr2.ayah
+        : BUILD + ' STORE[' + getBackendName() + '] BACA GAGAL'
     } catch (e) {
-      probeMsg = BUILD + ' STORAGE ERR: ' + e
+      probeMsg = BUILD + ' STORE ERR: ' + e
     }
     hmUI.createWidget(hmUI.widget.TEXT, {
       x: px(40), y: px(280), w: px(386), h: px(90), color: C.gold,

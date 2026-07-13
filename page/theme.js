@@ -1,7 +1,7 @@
 // Build marker — bump every preview round; home renders it so a glance at the
 // watch answers "which build is actually installed?" (Zepp App caches installs
 // by appId+version, so stale packages are a real failure mode here.)
-export const BUILD = 'b4'
+export const BUILD = 'b5'
 
 export const C = {
   bg: 0x000000, surface: 0x101010, surfacePress: 0x1A1A1A,

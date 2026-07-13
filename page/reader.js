@@ -1,18 +1,23 @@
 // Quran Reader — windowed stacked-TEXT + native layer scroll (DECISIONS D-006).
 //
-// b4 = RONDE DIAGNOSIS. Reader b3 mati total di watch padahal home hidup; satu-
-// satunya beda graph import reader vs halaman yang pernah render adalah
-// src/data/store (@zos/storage). Maka b4:
-//   1. TANPA import storage sama sekali (lastRead sementara nonaktif) —
-//      storage diuji terpisah lewat probe di page/surah-list.js.
-//   2. Flight recorder: marker 'r-b4' di atas layar + breadcrumb per tahap
-//      (setProperty prop.TEXT, d.ts:9905) + SEMUA exception dirender ke layar.
-//      Layar hitam bisu → jadi layar yang menyebut tahap kematiannya sendiri.
+// Pelajaran b3/b4 yang menetap di file ini (jangan diulang):
+// - b3 mati karena storeGet melempar di onInit (localStorage instance tidak ada
+//   di runtime 3.0 + console.error di catch store.js juga bukan fungsi).
+//   Sekarang store.js tidak pernah melempar, dan pemanggilan di sini tetap
+//   dibungkus try — dua lapis.
+// - Foto b4: ◄ ► ⌂ = TOFU di font sistem. Yang terbukti render: teks Arab,
+//   angka Arab, ﴿ ﴾, ▲?belum, ↩ (emoji), Latin. Chip nav pakai KATA ARAB.
+// - back() setelah rantai replace() tidak reliable (laporan Ahmed b4) →
+//   tombol keluar reader = replace ke page/index (deterministik);
+//   back sistem = swipe kanan, tidak pernah diblokir.
+// - Flight recorder (marker r-bN + stage + catch-all render error) DIPERTAHANKAN
+//   sampai gate P0 lulus.
 import * as hmUI from '@zos/ui'
 import { px } from '@zos/utils'
-import { push, replace, back } from '@zos/router'
+import { replace } from '@zos/router'
 import { C, F, BUILD } from './theme'
 import { getSurah } from '../src/data/quran'
+import { get as storeGet, set as storeSet } from '../src/data/store'
 
 // ── Layout constants (quran-app proven: PAD 50 / W 366 on this 466 round) ──
 const PADX = 50
@@ -31,6 +36,7 @@ let _ayah = 1
 let _initErr = ''
 let _stage = 'boot'
 let _mark = null
+let _renderedOK = false
 
 function toArabicNum(n) {
   const D = '٠١٢٣٤٥٦٧٨٩'
@@ -83,12 +89,18 @@ function windowIndexFor(wins, ayatIdx) {
   return w
 }
 
-// lastRead sengaja nonaktif di b4 (storage diuji via probe surah-list dulu).
-// b5: kembalikan import store + panggil storeSet di sini.
-function saveLastRead() { }
+function saveLastRead() {
+  try {
+    storeSet('lastRead', { surah: _sn, ayah: _ayah, page: 1, ts: Date.now() })
+  } catch (e) { /* persistence must never kill the reader */ }
+}
 
 function gotoReader(surahNum, ayahNum) {
   replace({ url: 'page/reader', params: JSON.stringify({ surahNum, ayahNum }) })
+}
+
+function gotoHome() {
+  replace({ url: 'page/index' })
 }
 
 // Breadcrumb: kalau build mati keras (native), marker menyimpan tahap terakhir.
@@ -128,6 +140,7 @@ Page({
     _sn = 0
     _ayah = 1
     _initErr = ''
+    _renderedOK = false
     try {
       const p = typeof params === 'string' ? JSON.parse(params) : params
       if (p && p.surahNum) {
@@ -137,8 +150,17 @@ Page({
     } catch (e) {
       _initErr = 'init: ' + e
     }
-    if (!_sn) _sn = 1
-    if (_sn < 1 || _sn > 114) _sn = 1
+    if (!_sn) {
+      try {
+        const lr = storeGet('lastRead')
+        _sn = (lr && lr.surah) || 1
+        _ayah = (lr && lr.ayah) || 1
+      } catch (e) {
+        _sn = 1
+        _ayah = 1
+      }
+    }
+    if (!_sn || _sn < 1 || _sn > 114) _sn = 1
   },
 
   build() {
@@ -153,8 +175,8 @@ Page({
       if (!surah || !surah.ayat || surah.ayat.length === 0) {
         stage('nodata')
         label('Surah ' + _sn + ' tidak tersedia', 50, 160, 366, 60, C.gold, F.body, true)
-        chip(125, 260, 100, 56, '↩', C.textHi, function () { back() })
-        chip(241, 260, 100, 56, '١', C.gold, function () { gotoReader(1, 1) })
+        chip(125, 260, 100, 56, '↩', C.textHi, function () { gotoHome() })
+        chip(241, 260, 100, 56, 'الفاتحة', C.gold, function () { gotoReader(1, 1) })
         return
       }
 
@@ -186,9 +208,9 @@ Page({
       label(ayat[startI].nomor + '–' + ayat[endI].nomor + ' / ' + n, 0, y, 466, 24, C.textLo, F.caption, false)
       y += 30
 
-      chip(80, y, 56, 48, '◄', C.gold, function () { gotoReader(prevSn, 1) })
-      chip(330, y, 56, 48, '►', C.gold, function () { gotoReader(nextSn, 1) })
-      label(_sn + ' / 114', 156, y, 154, 48, C.textLo, F.caption, false)
+      chip(40, y, 130, 48, 'السابقة', C.gold, function () { gotoReader(prevSn, 1) })
+      chip(296, y, 130, 48, 'التالية', C.gold, function () { gotoReader(nextSn, 1) })
+      label(_sn + '/114', 176, y, 114, 48, C.textLo, F.caption, false)
       y += 60
 
       fill(PADX, y, W_TXT, 1, C.strokeGold)
@@ -207,7 +229,7 @@ Page({
 
       if (wi > 0) {
         const upAyah = ayat[wins[wi - 1]].nomor
-        chip(173, y, 120, 48, '▲', C.gold, function () { gotoReader(_sn, upAyah) })
+        chip(153, y, 160, 48, 'أعلى', C.gold, function () { gotoReader(_sn, upAyah) })
         y += 60
       }
 
@@ -225,27 +247,28 @@ Page({
       y += 8
       if (wi + 1 < wins.length) {
         const dnAyah = ayat[wins[wi + 1]].nomor
-        chip(153, y, 160, 56, '▼', C.gold, function () { gotoReader(_sn, dnAyah) })
+        chip(153, y, 160, 56, 'تابع', C.gold, function () { gotoReader(_sn, dnAyah) })
         y += 68
       }
 
-      chip(105, y, 56, 56, '◄', C.gold, function () { gotoReader(prevSn, 1) })
-      chip(205, y, 56, 56, '↩', C.textHi, function () { back() })
-      chip(305, y, 56, 56, '►', C.gold, function () { gotoReader(nextSn, 1) })
+      chip(40, y, 130, 56, 'السابقة', C.gold, function () { gotoReader(prevSn, 1) })
+      chip(196, y, 74, 56, '↩', C.textHi, function () { gotoHome() })
+      chip(296, y, 130, 56, 'التالية', C.gold, function () { gotoReader(nextSn, 1) })
       y += 68
 
       fill(0, y, 466, 24, C.bg)
 
       stage('ok')
+      _renderedOK = true
       saveLastRead()
     } catch (e) {
       // Layar hitam bisu dilarang: exception apa pun tampil + tahap terakhirnya.
       label('ERR @' + _stage + ': ' + e, 60, 140, 346, 220, C.gold, F.label, true)
-      chip(205, 380, 56, 56, '↩', C.textHi, function () { back() })
+      chip(196, 380, 74, 56, '↩', C.textHi, function () { gotoHome() })
     }
   },
 
   onDestroy() {
-    saveLastRead()
+    if (_renderedOK) saveLastRead()
   },
 })

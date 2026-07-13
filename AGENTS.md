@@ -42,7 +42,7 @@ Use these. Anything else → verify first.
 | Scaling | `import { px } from '@zos/utils'` | Wrap every coordinate. `designWidth: 466` in app.json. |
 | Routing | `@zos/router` | push / replace / back / home / exit |
 | Gestures | `@zos/interaction` — `onGesture`, `GESTURE_*` | Returning `true` blocks the default. **Never block GESTURE_RIGHT** (system back) outside a modal. |
-| Key-value | `import { localStorage } from '@zos/storage'` | `setItem` / `getItem(key, default)` |
+| Key-value | `import { LocalStorage } from '@zos/storage'` → `new LocalStorage()` | **Instance kecil `localStorage` = "TypeError: not a function" di watch ini (foto b4, 2026-07-14)** — hanya class (`@version 3.0`) yang jalan. Akses HANYA via `src/data/store.js` (yang sudah punya fallback & tidak pernah melempar) |
 | Files | `@zos/fs` | For mushaf/audio packs written to the watch |
 | Haptics | `import { Vibrator } from '@zos/sensor'` | Start/stop; pick the scene, don't buzz on everything |
 | Compass | `import { Compass, checkSensor } from '@zos/sensor'` | `getStatus()`, `getDirectionAngle()`, `onChange`, `start`, `stop` |
@@ -75,6 +75,14 @@ Use these. Anything else → verify first.
     restructure the project, that urge is out of scope — write it down and move on.
 11. **`git checkout .`** on someone else's half-finished work.
 12. **Marking work done without running it on the real watch.**
+13. **`console.error` / `console.warn`** — not proven to exist in this runtime; a broken
+    console call inside a `catch` block is how b3's reader died silently. `console.log` only.
+14. **UI glyphs outside the proven set.** Proven on this watch (b4 photos): Arabic text,
+    Arabic-Indic digits, `﴿ ﴾`, `↩` (renders as emoji), Latin/ASCII. **Tofu (☐): `◄ ► ⌂`.**
+    New glyph = test it on the watch first; otherwise use Arabic words.
+15. **Reading or writing a preview build without bumping `version.code` + the `BUILD`
+    marker in `page/theme.js`.** The Zepp App caches installs per appId+version; a test
+    run is only valid if the on-screen marker matches the round you shipped.
 
 ## 4. Workflow
 

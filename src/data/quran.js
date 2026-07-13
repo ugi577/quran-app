@@ -55,13 +55,13 @@ function readAssetText(assetPath) {
   try {
     const stat = statAssetsSync({ path: assetPath })
     if (!stat || stat.size === 0) {
-      console.error(`[Quran] statAssetsSync failed for: ${assetPath}`)
+      console.log(`[Quran] statAssetsSync failed for: ${assetPath}`)
       return null
     }
 
     const fd = openAssetsSync({ path: assetPath, flag: O_RDONLY })
     if (fd === undefined || fd < 0) {
-      console.error(`[Quran] openAssetsSync failed for: ${assetPath}`)
+      console.log(`[Quran] openAssetsSync failed for: ${assetPath}`)
       return null
     }
 
@@ -70,12 +70,12 @@ function readAssetText(assetPath) {
     closeSync({ fd })
 
     if (bytesRead !== stat.size) {
-      console.warn(`[Quran] Short read: ${bytesRead}/${stat.size} for ${assetPath}`)
+      console.log(`[Quran] Short read: ${bytesRead}/${stat.size} for ${assetPath}`)
     }
 
     return utf8Decode(new Uint8Array(buffer))
   } catch (e) {
-    console.error(`[Quran] readAssetText error for ${assetPath}:`, e)
+    console.log(`[Quran] readAssetText error for ${assetPath}:`, e)
     return null
   }
 }
@@ -93,7 +93,7 @@ export function getSurahIndex() {
   if (surahIndex) return surahIndex
   const json = readAssetText('raw/data/quran/index.json')
   if (!json) {
-    console.error('[Quran] Failed to read surah index')
+    console.log('[Quran] Failed to read surah index')
     return []
   }
   try {
@@ -101,7 +101,7 @@ export function getSurahIndex() {
     console.log(`[Quran] Surah index loaded: ${surahIndex.length} surahs`)
     return surahIndex
   } catch (e) {
-    console.error('[Quran] Surah index JSON parse error:', e)
+    console.log('[Quran] Surah index JSON parse error:', e)
     return []
   }
 }
@@ -112,7 +112,7 @@ export function getSurahIndex() {
  */
 export function getSurah(num) {
   if (num < 1 || num > 114) {
-    console.warn(`[Quran] Invalid surah number: ${num}`)
+    console.log(`[Quran] Invalid surah number: ${num}`)
     return null
   }
 
@@ -128,7 +128,7 @@ export function getSurah(num) {
   console.log(`[Quran] Loading surah ${num} from ${path}`)
   const json = readAssetText(path)
   if (!json) {
-    console.error(`[Quran] Failed to read surah ${num}`)
+    console.log(`[Quran] Failed to read surah ${num}`)
     return null
   }
 
@@ -138,7 +138,7 @@ export function getSurah(num) {
     console.log(`[Quran] Surah ${num} loaded: "${surah.namaLatin}" (${surah.jumlahAyat} ayat)`)
     return surah
   } catch (e) {
-    console.error(`[Quran] JSON parse error for surah ${num}:`, e)
+    console.log(`[Quran] JSON parse error for surah ${num}:`, e)
     return null
   }
 }

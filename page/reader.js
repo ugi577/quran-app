@@ -33,7 +33,6 @@ const WPL_EST = 4
 // ── Module state ──
 let _sn = 1
 let _ayah = 1
-let _initErr = ''
 let _stage = 'boot'
 let _mark = null
 let _renderedOK = false
@@ -139,16 +138,27 @@ Page({
   onInit(params) {
     _sn = 0
     _ayah = 1
-    _initErr = ''
     _renderedOK = false
     try {
-      const p = typeof params === 'string' ? JSON.parse(params) : params
+      let p = null
+      if (params && typeof params === 'object') {
+        p = params
+      } else if (typeof params === 'string') {
+        // Firmware ini mengirim ''/'undefined' saat push TANPA params (foto b5:
+        // "init: SyntaxError" menimpa ayat Al-Lahab). Itu jalur normal Continue,
+        // bukan error — parse hanya kalau bentuknya memang JSON.
+        const s = params.trim()
+        if (s && s !== 'undefined' && s !== 'null' && s[0] === '{') {
+          p = JSON.parse(s)
+        }
+      }
       if (p && p.surahNum) {
         _sn = Number(p.surahNum) || 0
         _ayah = Number(p.ayahNum) || 1
       }
     } catch (e) {
-      _initErr = 'init: ' + e
+      console.log('[Reader] params parse: ' + e)
+      _sn = 0
     }
     if (!_sn) {
       try {
@@ -167,7 +177,6 @@ Page({
     hmUI.setLayerScrolling(true)
     fill(0, 0, 466, 466, C.bg)
     _mark = label('r-' + BUILD + ' boot', 0, 210, 60, 24, C.textLo, 20, false)
-    if (_initErr) label(_initErr, 40, 380, 386, 60, C.gold, 20, true)
 
     try {
       stage('load' + _sn)

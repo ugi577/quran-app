@@ -40,7 +40,7 @@ Use these. Anything else → verify first.
 | Widgets | `import { createWidget, widget, align, text_style, prop, event } from '@zos/ui'` | TEXT, IMG, FILL_RECT, ARC, CIRCLE, GROUP (no nesting), SCROLL_LIST, CANVAS, TEXT_IMG |
 | Custom font on TEXT | `createWidget(widget.TEXT, { …, font: 'fonts/x.ttf' })` | The property exists. **Whether Arabic *shapes* correctly is spike S2 — assume it does not.** |
 | Scaling | `import { px } from '@zos/utils'` | Wrap every coordinate. `designWidth: 466` in app.json. |
-| Routing | `@zos/router` | push / replace / back / home / exit |
+| Routing | `@zos/router` | push / replace / back / home / exit. **Firmware ini: buka page TANPA params → `onInit` menerima string `''`/`'undefined'` (bukan `undefined`)** — selalu guard sebelum `JSON.parse` (foto b5, Al-Lahab). `back()` setelah rantai `replace()` tidak reliable — tombol keluar pakai `replace` eksplisit |
 | Gestures | `@zos/interaction` — `onGesture`, `GESTURE_*` | Returning `true` blocks the default. **Never block GESTURE_RIGHT** (system back) outside a modal. |
 | Key-value | `import { LocalStorage } from '@zos/storage'` → `new LocalStorage()` | **Instance kecil `localStorage` = "TypeError: not a function" di watch ini (foto b4, 2026-07-14)** — hanya class (`@version 3.0`) yang jalan. Akses HANYA via `src/data/store.js` (yang sudah punya fallback & tidak pernah melempar) |
 | Files | `@zos/fs` | For mushaf/audio packs written to the watch |

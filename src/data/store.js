@@ -67,6 +67,7 @@ const SCHEMA = {
       notify: { fajr: true, dhuhr: true, asr: true, maghrib: true, isha: true },
       keepScreenOn: false,
       theme: 'dark',
+      mushafSize: 21,
     },
   },
   lastRead: {

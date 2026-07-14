@@ -29,7 +29,8 @@
           "pages": [
             "page/index",
             "page/reader",
-            "page/surah-list"
+            "page/surah-list",
+            "page/settings"
           ]
         }
       },

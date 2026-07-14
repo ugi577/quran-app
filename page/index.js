@@ -71,7 +71,7 @@ Page({
       { label: 'القرآن الكريم', url: 'page/surah-list' },
       { label: 'متابعة القراءة', url: 'page/reader' },
       { label: 'التسبيح',        url: null },
-      { label: 'الإعدادات',      url: null },
+      { label: 'الإعدادات',      url: 'page/settings' },
     ]
 
     for (let i = 0; i < CARDS.length; i++) {

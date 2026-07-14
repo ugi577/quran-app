@@ -19,7 +19,7 @@ const surahCache = [] // { number, timestamp, data }
 function utf8Decode(uint8) {
   const len = uint8.length
   const buf = []
-  let out = ''
+  const chunks = []
   let i = 0
   while (i < len) {
     const b1 = uint8[i++]
@@ -41,12 +41,12 @@ function utf8Decode(uint8) {
     // A stray continuation byte in lead position is dropped, not replaced with U+FFFD:
     // losing a character loudly beats emitting a wrong one silently.
     if (buf.length >= 4096) {
-      out += String.fromCharCode.apply(null, buf)
+      chunks.push(String.fromCharCode.apply(null, buf))
       buf.length = 0
     }
   }
-  if (buf.length) out += String.fromCharCode.apply(null, buf)
-  return out
+  if (buf.length) chunks.push(String.fromCharCode.apply(null, buf))
+  return chunks.join('')
 }
 
 // Read a text file from /assets and return its contents as a string.
@@ -135,7 +135,7 @@ export function getSurah(num) {
   try {
     const surah = JSON.parse(json)
     addToCache(num, surah)
-    console.log(`[Quran] Surah ${num} loaded: "${surah.namaLatin}" (${surah.jumlahAyat} ayat)`)
+    console.log(`[Quran] Surah ${num} loaded: "${surah.nl}" (${surah.ja} ayat)`)
     return surah
   } catch (e) {
     console.log(`[Quran] JSON parse error for surah ${num}:`, e)
@@ -148,8 +148,8 @@ export function getSurah(num) {
  */
 export function getAyah(surahNum, ayahNum) {
   const surah = getSurah(surahNum)
-  if (!surah || !surah.ayat) return null
-  return surah.ayat.find(a => a.nomor === ayahNum) || null
+  if (!surah || !surah.ay) return null
+  return surah.ay.find(a => a.n === ayahNum) || null
 }
 
 // --- Cache internals ---

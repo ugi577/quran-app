@@ -91,10 +91,15 @@ cetak** — Fatihah foto b4 sudah terlihat benar, tapi gate §5 butuh pernyataan
 eksplisit Ahmed utk sampel lebih luas (min. Fatihah + awal Baqarah + Ikhlas).
 LULUS semua → Batch B P0 GATE DITUTUP → lanjut P1 (home final).
 
-## Files touched
-`page/reader.js` (rewrite) · `page/theme.js` (+F.quran 32, F.basmalah 28) ·
-`src/data/quran.js` (getSurahIndex) · `app.json` (permissions) · `page/index.js` +
-`page/surah-list.js` (tapZone C.bg) · `DECISIONS.md` (D-006) · `.gitignore` + hapus zab lama.
+## Files touched (kumulatif P0 ronde 1–5)
+`page/reader.js` (rewrite D-006 + flight recorder + chip kata Arab + lastRead 2-lapis) ·
+`page/theme.js` (F.quran 32, F.basmalah 28, BUILD marker) · `page/index.js` (marker
+BUILD di home, tapZone C.bg) · `page/surah-list.js` (probe storage + tapZone C.bg) ·
+`src/data/quran.js` (decoder UTF-8 chunked — verified 115/115, getSurahIndex via fs,
+console.log-only) · `src/data/store.js` (backend class→instance→no-op, tak pernah
+melempar, getBackendName) · `app.json` (permission local_storage; version 1.0.3 code 4) ·
+`AGENTS.md` (§2 storage row; banned #13 console, #14 glyph, #15 bump marker) ·
+`DECISIONS.md` (D-006 reader windowed TEXT, D-007 storage/console/glyph) · `.gitignore`.
 
 ## Bugs
 - **P1 — surah-list body BLANK di watch (TERKONFIRMASI foto 2026-07-14)**: SCROLL_LIST

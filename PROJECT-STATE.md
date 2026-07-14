@@ -12,6 +12,18 @@
 **Batch B — P0 Reader Quran tampil penuh (master session 02) · ⏸ FIX RONDE 2 TERKIRIM — MENUNGGU UJI ULANG WATCH + TASHIH AHMED**
 
 ## Done (terbaru di atas)
+- ✅ **RONDE 5 — b5 FIX BERBASIS VONIS b4 (2026-07-14, `c73be5a`):** Foto b4 Ahmed =
+  breakthrough: (1) **READER RENDER SEMPURNA** — Fatihah utuh, Arab benar, nomor gold
+  ﴿ ٧ ﴾, wrap rapi → arsitektur D-006 TERBUKTI; (2) probe = `STORAGE ERR: TypeError:
+  not a function` → instance `localStorage` tidak ada di runtime 3.0; pakai **class
+  `new LocalStorage()`** (d.ts @version 3.0). Kematian b3 terjelaskan: storeGet melempar
+  di onInit + console.error di catch bukan fungsi. b5: store.js backend class→instance→
+  no-op (TIDAK PERNAH melempar) + getBackendName(); console.log-only seluruh repo;
+  **glyph tofu dari foto (◄ ► ⌂ = ☐) diganti kata Arab** السابقة/التالية/تابع/أعلى;
+  tombol keluar reader = replace ke home (back() setelah rantai replace tak berfungsi —
+  laporan Ahmed); lastRead aktif lagi. AGENTS §2 storage + banned #13/14/15 baru;
+  DECISIONS D-007. v1.0.3 code 4; b5 verified di 3 bin (catatan: literal Arab di
+  bytecode QJSC = UTF-16LE, grep UTF-8 tidak akan ketemu — cek pakai Buffer utf16le).
 - 🔬 **RONDE 4 — b4 DIAGNOSIS (2026-07-14, `bd35ffd`):** b3 TERBUKTI terpasang (marker
   tampil) tapi reader tetap mati total; home hidup. Analisis graph import: satu-satunya
   modul di reader yang BELUM PERNAH terbukti load di watch = `src/data/store`
@@ -69,14 +81,15 @@
   home dashboard 4 kartu; icon.
 
 ## Next step
-**Ahmed (b4 = ronde diagnosis, butuh 2 FOTO):** (1) hapus app dari watch → scan QR baru
-→ home harus tulis `b4`; (2) **FOTO 1:** tap **القرآن الكريم** (surah-list) → foto layar
-— yang dicari: baris `b4 STORAGE OK/ERR …` di tengah-bawah, ATAU halaman mati total;
-(3) **FOTO 2:** balik ke home, tap **متابعة القراءة** (reader) → foto layar — yang
-dicari: teks kecil `r-b4 <tahap>` di kiri-tengah + kalau ada, kotak `ERR @…`.
-Interpretasi cepat: reader hidup normal = storage-lah tersangkanya (b5 pasang balik
-dgn guard); reader tampil `ERR @tahap` = akar persisnya ketahuan; `r-b4 aN` beku tanpa
-ERR = crash native di ayat N; surah-list mati total = import @zos/storage fatal.
+**Ahmed (b5):** hapus app → scan QR → home tulis `b5` → uji: (1) **القرآن الكريم** →
+probe harus tulis `b5 STORE[class] OK s1:a1` (foto); (2) **متابعة القراءة** → Fatihah;
+(3) chip **التالية** → Al-Baqarah render + **تابع** turun beberapa window + **أعلى**
+naik; (4) chip **↩** → harus balik ke HOME (bukan diam); (5) keluar app (swipe kanan),
+buka lagi → Continue mendarat di posisi terakhir (lastRead JALAN pertama kalinya);
+(6) ke Al-Ikhlas (السابقة 3× dari Fatihah) → 4 ayat utuh; (7) **FOTO + TASHIH vs mushaf
+cetak** — Fatihah foto b4 sudah terlihat benar, tapi gate §5 butuh pernyataan LULUS
+eksplisit Ahmed utk sampel lebih luas (min. Fatihah + awal Baqarah + Ikhlas).
+LULUS semua → Batch B P0 GATE DITUTUP → lanjut P1 (home final).
 
 ## Files touched
 `page/reader.js` (rewrite) · `page/theme.js` (+F.quran 32, F.basmalah 28) ·

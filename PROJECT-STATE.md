@@ -9,9 +9,17 @@
 ---
 
 ## Batch
-**Batch B — P0 Reader Quran tampil penuh (master session 02) · ⏸ FIX RONDE 2 TERKIRIM — MENUNGGU UJI ULANG WATCH + TASHIH AHMED**
+**Batch B — P0 Reader Quran tampil penuh (master session 02) · 🟢 b6 TERKIRIM — READER SUDAH TERBUKTI RENDER; TINGGAL VALIDASI AKHIR + TASHIH AHMED**
 
 ## Done (terbaru di atas)
+- ✅ **RONDE 6 — b6 (2026-07-14, `e793600`) — FOTO b5 = BUKTI KEMENANGAN:** (1) reader
+  render SEMPURNA (Al-Lahab: basmalah gold + 5 ayat + nomor ﴿ ﴾, wrap benar);
+  (2) probe `b5 STORE[class] OK s113:a1` = **storage class + lastRead TERBUKTI JALAN**
+  (D-007 confirmed on-watch). Satu cacat kosmetik: `init: SyntaxError` menimpa ayat —
+  firmware kirim string `''`/`'undefined'` saat page dibuka TANPA params (jalur Continue)
+  dan onInit memaksa JSON.parse. b6: parse hanya kalau bentuk `{...}`, kasus kosong =
+  jalur normal → lastRead, label init-error dihapus (catch-all build tetap). AGENTS §2
+  routing += fakta firmware. v1.0.4 code 5, `b6` verified di 3 bin.
 - ✅ **RONDE 5 — b5 FIX BERBASIS VONIS b4 (2026-07-14, `c73be5a`):** Foto b4 Ahmed =
   breakthrough: (1) **READER RENDER SEMPURNA** — Fatihah utuh, Arab benar, nomor gold
   ﴿ ٧ ﴾, wrap rapi → arsitektur D-006 TERBUKTI; (2) probe = `STORAGE ERR: TypeError:
@@ -81,15 +89,13 @@
   home dashboard 4 kartu; icon.
 
 ## Next step
-**Ahmed (b5):** hapus app → scan QR → home tulis `b5` → uji: (1) **القرآن الكريم** →
-probe harus tulis `b5 STORE[class] OK s1:a1` (foto); (2) **متابعة القراءة** → Fatihah;
-(3) chip **التالية** → Al-Baqarah render + **تابع** turun beberapa window + **أعلى**
-naik; (4) chip **↩** → harus balik ke HOME (bukan diam); (5) keluar app (swipe kanan),
-buka lagi → Continue mendarat di posisi terakhir (lastRead JALAN pertama kalinya);
-(6) ke Al-Ikhlas (السابقة 3× dari Fatihah) → 4 ayat utuh; (7) **FOTO + TASHIH vs mushaf
-cetak** — Fatihah foto b4 sudah terlihat benar, tapi gate §5 butuh pernyataan LULUS
-eksplisit Ahmed utk sampel lebih luas (min. Fatihah + awal Baqarah + Ikhlas).
-LULUS semua → Batch B P0 GATE DITUTUP → lanjut P1 (home final).
+**Ahmed (b6 — validasi akhir P0):** hapus app → scan QR → home `b6` → (1) Continue →
+harus TANPA teks error kuning lagi, mendarat di lastRead; (2) **التالية** ke Al-Baqarah:
+scroll + **تابع** beberapa window (uji surah raksasa); (3) **↩** → home; keluar-masuk →
+Continue nyambung; (4) **TASHIH vs mushaf cetak** (min. Fatihah + awal Baqarah +
+Al-Ikhlas) → **pernyataan LULUS eksplisit** → GATE P0 DITUTUP → baru P1 home final +
+P2 surah-list (rencana: SCROLL_LIST resmi via docs + fallback pola quran-app —
+tanya Ahmed pilih mana saat kickoff P2).
 
 ## Files touched (kumulatif P0 ronde 1–5)
 `page/reader.js` (rewrite D-006 + flight recorder + chip kata Arab + lastRead 2-lapis) ·

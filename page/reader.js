@@ -151,9 +151,14 @@ Page({
       // -- Build per-line text from words[], one TEXT widget per mushaf line --
       // Ayah markers (١) inserted inline at ayah boundaries within each line.
       var surahOnPage = pageData.surah || 0
-      var lineTexts = []  // [{text, isNewSurahTransition}]
+      var lineTexts = []
       var lastAyah = 0
       var lastSurah = 0
+      // Word spacing from settings
+      var wordSpPct = (settings && settings.wordSpacing) || 100
+      var wordSpacer = ' '
+      if (wordSpPct >= 120) wordSpacer = '  '
+      else if (wordSpPct <= 50) wordSpacer = ''
 
       for (var li = 0; li < pageData.lines.length; li++) {
         var words = pageData.lines[li].words
@@ -162,20 +167,16 @@ Page({
           continue
         }
         var lineText = ''
-        var lineHasSurahTransition = false
         for (var wi = 0; wi < words.length; wi++) {
           var w = words[wi]
           if (w.a !== lastAyah || w.s !== lastSurah) {
             if (lastAyah > 0) {
               lineText += ' (' + toArabicNum(lastAyah) + ') '
             }
-            if (w.s !== lastSurah && lastSurah > 0) {
-              lineHasSurahTransition = true
-            }
             lastSurah = w.s
             lastAyah = w.a
           }
-          lineText += w.t + ' '
+          lineText += w.t + wordSpacer
         }
         // Don't add trailing marker — ayah may continue to next line/page
         lineTexts.push({ text: lineText, isEmpty: false, surahTrans: lineHasSurahTransition })
@@ -206,28 +207,33 @@ Page({
 
       // -- Render each mushaf line as a separate TEXT widget --
       stage('text')
-      var lineH = Math.round(_mushafSize * 1.7)  // estimated height per visual line
+      var lineH = Math.round(_mushafSize * 1.7)
       var totalH = 0
+      var seenText = false
       for (var li2 = 0; li2 < lineTexts.length; li2++) {
         var lt = lineTexts[li2]
         if (lt.isEmpty) {
-          // Empty/decorative line — small vertical gap
-          textY += Math.round(lineH * 0.5)
-          totalH += Math.round(lineH * 0.5)
+          // Leading empty lines: minimal gap (pages 1-2 have 8-9 decorative lines)
+          // After text starts: normal decorative gap
+          textY += seenText ? Math.round(lineH * 0.5) : Math.round(lineH * 0.15)
+          totalH += seenText ? Math.round(lineH * 0.5) : Math.round(lineH * 0.15)
           continue
         }
-        // One data line = one visual row, no reflow/wrap
-        var lH = Math.round(_mushafSize * 1.6)
+        seenText = true
+        // One data line block — wraps if wider than available width
+        var lH = textH(lt.text, _mushafSize)
         hmUI.createWidget(hmUI.widget.TEXT, {
           x: px(PADX), y: px(textY), w: px(W_TXT), h: lH,
           color: C.textHi, text_size: _mushafSize,
           text: lt.text,
           align_h: hmUI.align.RIGHT,
           align_v: hmUI.align.CENTER_V,
-          text_style: hmUI.text_style.NONE,
+          text_style: hmUI.text_style.WRAP,
         })
-        textY += lH + 2
-        totalH += lH + 2
+        var lineSpPct = (settings && settings.lineSpacing) || 100
+        var gap = Math.max(1, Math.round(2 * lineSpPct / 100))
+        textY += lH + gap
+        totalH += lH + gap
       }
       console.log('[mushaf] page ' + _page + ' total height: ' + totalH + 'px, lines: ' + lineTexts.length + ', font: ' + _mushafSize + 'pt')
 
@@ -237,14 +243,15 @@ Page({
       var ftrCY = textEndY + 36  // center y of footer row
       var ftrR = 24  // circle radius
       var ftrGap = 64  // gap between circle centers
-      var ftrCX = [233 - ftrGap, 233, 233 + ftrGap]  // ◀ ⌂ ▶ centers
-      var ftrCH = ['«', '⌂', '»']
+      var ftrCX = [233 - ftrGap, 233, 233 + ftrGap]  // left, center, right
+      // RTL: » on left = next page, « on right = prev page
+      var ftrCH = ['»', '⌂', '«']
       var prevPg = _page > 1 ? _page - 1 : 604
       var nextPg = _page < 604 ? _page + 1 : 1
       var ftrActions = [
-        function () { gotoPage(prevPg) },
+        function () { gotoPage(nextPg) },   // left → page++
         function () { gotoHome() },
-        function () { gotoPage(nextPg) },
+        function () { gotoPage(prevPg) },   // right → page--
       ]
 
       fill(0, ftrCY - ftrR - 8, 466, ftrR * 2 + 20, C.bg)

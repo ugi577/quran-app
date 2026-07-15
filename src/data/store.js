@@ -68,6 +68,8 @@ const SCHEMA = {
       keepScreenOn: false,
       theme: 'dark',
       mushafSize: 21,
+      lineSpacing: 100,
+      wordSpacing: 100,
     },
   },
   lastRead: {

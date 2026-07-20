@@ -31,13 +31,12 @@ import { getLocation } from '../src/data/location'
 // ═══════════════════════════════════════════
 
 var CX = 233
-var HEADER_Y = 14     // city
-var GANTI_Y = 48      // "Ganti Lokasi" tappable affordance (under the city name)
-var DATE_Y = 66       // Masehi date
-var HIJRI_Y = 90      // Hijri date
-var DIV_Y = 114
-var ROW_START_Y = 118 // first row
-var ROW_H = 38        // compressed (was 40) to fit the Ganti Lokasi line in the header
+var HEADER_Y = 16     // city + location icon (one tappable line)
+var DATE_Y = 52       // Masehi date
+var HIJRI_Y = 78      // Hijri date
+var DIV_Y = 104
+var ROW_START_Y = 110 // first row
+var ROW_H = 40        // 6 rows fit within the bezel
 var ROW_GAP = 4
 var COUNTDOWN_Y = 376
 var COUNTDOWN_H = 54
@@ -251,16 +250,34 @@ Page({
     // ══ Background ══
     fill(0, 0, 466, 466, C.bg)
 
-    // ══ Header: city + "Ganti Lokasi" (both tappable → change location) + dates ══
-    // Tap zone drawn FIRST (covers city + Ganti Lokasi); the labels render on top and
-    // taps pass through to it. replace→location so prayer.build() re-runs FRESH on
-    // return (Zepp Page has no onShow). This replaces the old cryptic corner "GPS"
-    // button, which sat outside the bezel safe circle and was effectively invisible.
-    var cityTapW = 280
-    tapZone(centerX(cityTapW), HEADER_Y, cityTapW, 52, function () { replace({ url: 'page/location' }) })
+    // ══ Header: city + location icon (one tappable line) + dates ══
+    // ROOT CAUSE of the b36 tap failure (fixed here): the tapZone was drawn BENEATH the
+    // full-width city TEXT, so taps hit the text layer (no listener) and never reached
+    // the tapZone. The PROVEN config — tasbih Reset/Preset, surah-list cards, settings
+    // steppers — draws visuals FIRST and the tapZone LAST (topmost), so it receives taps
+    // directly while staying transparent (alpha:1 overlay). That is what this does.
+    // (widget.BUTTON exists in the API but is unused/unproven here; index.js itself uses
+    //  this same FILL_RECT+addEventListener tapZone pattern — see its header comment.)
+    // Icon = CIRCLE widget (proven, like the index.js brand mark). Pin/gear GLYPHS are
+    // tofu-risk (AGENTS §3.14), so the icon is drawn with primitives, not a glyph.
+    var cityStr = _loc.mode === 'auto' ? 'Lokasi GPS' : _loc.city
+    var CHAR_W = 18                              // approx char width @ F.h2(34), Latin — overestimated so the icon never overlaps the text
+    var cityTextW = cityStr.length * CHAR_W
+    var ICON_R = 9
+    var ICON_GAP = 10
+    var groupW = cityTextW + ICON_GAP + ICON_R * 2
+    var groupLeft = centerX(groupW)
+    var iconCx = groupLeft + cityTextW + ICON_GAP + ICON_R
+    var iconCy = HEADER_Y + 17
 
-    label(_loc.mode === 'auto' ? 'Lokasi GPS' : _loc.city, 0, HEADER_Y, 466, 34, C.gold, F.h2)
-    label('Ganti Lokasi', 0, GANTI_Y, 466, 18, C.goldBright, 16)
+    labelLeft(cityStr, groupLeft, HEADER_Y, cityTextW, 34, C.gold, F.h2)
+    hmUI.createWidget(hmUI.widget.CIRCLE, { center_x: iconCx, center_y: iconCy, radius: ICON_R, color: C.gold })
+    hmUI.createWidget(hmUI.widget.CIRCLE, { center_x: iconCx, center_y: iconCy, radius: 3, color: C.bg })
+
+    // Tap zone drawn LAST (topmost, transparent) — covers the city+icon group.
+    // ≥48×48 (groupW is ≥ ~113 for the shortest city; widened to 200 for an easy tap).
+    var locTapW = Math.max(groupW, 200)
+    tapZone(centerX(locTapW), HEADER_Y, locTapW, 38, function () { replace({ url: 'page/location' }) })
 
     _dateW = label(formatDate(today), 0, DATE_Y, 466, 24, C.textMd, F.caption)
 
@@ -313,9 +330,6 @@ Page({
     // ══ Back affordance (top-left) ══
     tapZone(16, 10, 44, 44, function () { back() })
     label('←', 16, 10, 44, 44, C.textHi, 34)  // ← (U+2190, proven)
-
-    // (Ganti Lokasi entry = the tappable city/"Ganti Lokasi" header above. No corner
-    //  button: the old "GPS" corner label sat outside the bezel safe circle — invisible.)
 
     // ══ Build marker ══
     label(BUILD, 0, 436, 466, 22, C.textLo, 18)

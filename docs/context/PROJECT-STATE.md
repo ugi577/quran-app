@@ -4,7 +4,7 @@ Updated: 2026-07-21 | Mesin: ryzencachy
 ## Batch: I — CLOSED (`stable-i1`)
 > Sebelumnya **Batch B — CLOSED (`stable-b27`)**. Lihat §Checkpoint.
 
-## Batch: H — Jadwal Sholat · WIP (build `b36`, v1.0.6) — MENUNGGU GATE AHMED
+## Batch: H — Jadwal Sholat · WIP (build `b37`, v1.0.6) — MENUNGGU GATE AHMED
 > Sebelumnya **Batch I — CLOSED (`stable-i1`)**. Lihat §Checkpoint.
 
 ## Done — Batch I (terverifikasi dari kode + build, BUKAN dari watch)
@@ -196,8 +196,8 @@ tz-invariant check (Bogor-coords tz 7→8→9 = Dzuhur 12:01→13:01→14:01) ko
 12. **6 baris + header + countdown MUAT** tanpa kepotong bezel (round 466). Tidak ada teks ter-clip lingkar luar.
 13. **Tanggal Hijriah** tampil di bawah Masehi (mis. "6 Safar 1448 H" utk 21 Jul 2026) — **bandingkan dgn kalender
     NU/Kemenag**, catat selisih di PROJECT-STATE kalau ada. Offset +1 sudah di-set; re-check di bulan Hijri berikutnya.
-14. **"Ganti Lokasi"** TERLIHAT di header prayer (di bawah nama kota, goldBright) & BISA DI-TAP → buka
-    halaman Lokasi. (Bukan tombol sudut — yang lama "GPS" di pojok kanan-atas ter-clip bezel, tak terlihat.)
+14. **Ikon lokasi** (lingkaran emas kecil) TERLIHAT di SEBELAH KANAN nama kota di header prayer & **TAP
+    benar-benar berfungsi** → buka halaman Lokasi (test fisik di watch, bukan "seharusnya jalan"). Header tetap 3 baris (kota+ikon / tanggal / hijriah).
 15. **Manual**: pilih Makassar & Medan → bandingkan dgn Kemenag kota itu (lihat tabel multi-kota) — selisih ≤2 mnt.
     Jadwal BERUBAH saat kembali ke prayer **tanpa restart app**. Header kota + 6 baris ikut berubah.
 16. **Otomatis (GPS)**: tap → "Mencari lokasi..." → DAPAT FIX (koordinat tampil) ATAU timeout 20s "GPS tidak tersedia,
@@ -206,7 +206,7 @@ tz-invariant check (Bogor-coords tz 7→8→9 = Dzuhur 12:01→13:01→14:01) ko
     Dzuhur ~11:45. Prasyarat: jam watch diset zona benar via HP. (Kalau tz salah → semua waktu meleset berjam-jam — P0.)
 
 ## Next step
-- **Ahmed (gate H):** install 1.0.6 (BUILD `b36`, code 8) → uji 17 poin di atas → **LULUS eksplisit** → tag `stable-h1`.
+- **Ahmed (gate H):** install 1.0.6 (BUILD `b37`, code 8) → uji 17 poin di atas → **LULUS eksplisit** → tag `stable-h1`.
 - Setelah LULUS: **Batch J — Qibla** (compass + arah kiblat, `docs/prompts/04-BATCH-LANJUTAN.md`).
 
 ## Files touched (Batch H, committed)
@@ -221,6 +221,8 @@ tz-invariant check (Bogor-coords tz 7→8→9 = Dzuhur 12:01→13:01→14:01) ko
 `src/data/store.js` (schema location) · `app.json` (page/location + geolocation perm + code 8) · `page/theme.js` (BUILD b35) · PROJECT-STATE.
 **b36 (fix akses location):** `page/prayer.js` (hapus tombol sudut "GPS" yg ter-clip bezel → ganti label
 "Ganti Lokasi" tappable di header bawah nama kota; ROW_H 40→38, header dipadatkan) · `page/theme.js` (BUILD b36) · PROJECT-STATE.
+**b37 (fix tap gagal):** `page/prayer.js` (hapus baris teks "Ganti Lokasi" — tap-nya gagal krn tapZone
+digambar DI BAWAH text; ganti ikon CIRCLE di kanan kota + tapZone TOPMOST proven config; header balik 3 baris, ROW_H 38→40) · `page/theme.js` (BUILD b37) · PROJECT-STATE.
 
 ## ⚠ LESSON — verifikasi END-TO-END, bukan halaman berdiri sendiri (bug b35→b36)
 **Bug:** `page/location.js` b35 sudah lengkap + terdaftar di app.json, DAN ada "tombol" akses di prayer.js —
@@ -235,6 +237,26 @@ jadwal berubah). Titik masuknya sendiri tak pernah dicek visibilitasnya di bezel
 **Aturan ke depan:** setiap halaman baru WAJIB diverifikasi **end-to-end dari titik masuk nyata** — bukan cuma
 "halaman ini compile + jalan kalau dibuka langsung". Cek: (1) ada titik masuk yg terlihat & tappable di bezel,
 (2) alur navigasi penuh sampai efek terlihat. `zeus build` hijau ≠ user bisa mencapai fitur.
+
+## ⚠ LESSON 2 — tapZone HARUS topmost (draw order), bukan soal widget type (bug b36→b37)
+**Bug:** tombol "Ganti Lokasi" (teks) b36 MUNCUL di header prayer TAPI **tidak merespon tap sama sekali**.
+**Akar masalah (BUKAN widget type — draw order):** b36 menggambar `tapZone` (FILL_RECT+addEventListener)
+DULU, lalu widget TEXT kota full-width **DI ATASNYA**. Sentuhan mengenai lapisan TEXT (tak punya listener) →
+event hilang, tak sampai ke tapZone di bawah. Pola **TERBUKTI** (tasbih Reset/Preset, kartu surah-list,
+settings steppers) menggambar **visual DULU, tapZone TERAKHIR (topmost)** → tapZone terima tap langsung,
+tetap transparan (`alpha:1` overlay). Tombol ← back kebetulan jalan dgn text-on-top (glyph tunggal kecil),
+tapi itu **tak generalizable** ke text yg tumpang-tindih lebar.
+**Diagnosis awal yg SALAH:** dikira "harus pakai `widget.BUTTON`+`click_func`, bukan TEXT+click_func".
+FAKTA: `page/index.js` **TIDAK** pakai BUTTON — komentarnya sendiri (line 2): *"Pattern from working
+quran-app: FILL_RECT + addEventListener(CLICK_DOWN)"*. **Seluruh codebase pakai `tapZone`** (index, tasbih,
+surah-list, settings, prayer). `widget.BUTTON` ada di device-types tapi **unproven** di sini → AGENTS §0
+larang pakai API unverified. **Widget type bukan masalahnya — draw order ya.**
+**Fix b37:** hapus baris teks "Ganti Lokasi" (header balik 3 baris). Ganti **ikon CIRCLE** kecil (proven spt
+brand-mark index.js; glyph pin/gear = tofu-risk AGENTS §3.14) di **sebelah kanan** nama kota (compound-centered
+supaya tak overlap utk semua 12 kota + "Lokasi GPS", verified Node). `tapZone` digambar **TERAKHIR** (topmost)
+menutupi city+ikon → replace location. `ROW_H` 38→40 (header tak perlu dipadatkan lagi).
+**Aturan ke depan:** `tapZone` = widget **TOPMOST** di region tap-nya (gambar SETELAH visual). Jangan andalkan
+fall-through text→tapZone (tak reliable di Zepp OS 3.0). Berlaku utk Batch J (Qibla) & Batch N (Settings).
 
 ## Checkpoint
 - **stable-b18** — Mushaf per-halaman awal (sebelum per-line rendering fix).

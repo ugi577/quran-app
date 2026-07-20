@@ -5,7 +5,7 @@ Updated: 2026-07-20 | Mesin: ryzencachy
 > Sebelumnya **Batch B — CLOSED (`stable-b27`)**. Lihat §Checkpoint.
 
 ## Done — Batch I (terverifikasi dari kode + build, BUKAN dari watch)
-- `page/tasbih.js` baru — counter dzikir per spec `04-BATCH-LANJUTAN.md` (BATCH I):
+- `page/tasbih.js` baru — counter dzikir per spec `docs/prompts/04-BATCH-LANJUTAN.md` (BATCH I):
   - Angka BESAR tengah (`F.display` 96, `C.textHi`; → `C.emeraldBright` saat target tercapai)
   - Teks dzikir aktif di atas (C.gold, 26), "Target: N" di bawah (C.textLo, 22)
   - **Ring progress = 2 ARC** (track `C.goldDim` 0→360 + fill `C.emeraldBright`, sweep=count/target×360).
@@ -32,19 +32,19 @@ Updated: 2026-07-20 | Mesin: ryzencachy
 2. **Tashih 5 string Arab preset** — teks BARU (bukan dari source FROZEN). Harus cocok cetakan/dzikir
    baku sebelum gate ditutup. Salah render → laporkan, jangan "diperbaiki" sendiri.
 3. **Haptic scenes** terasa sesuai (short-strong per hit, long di target).
-4. Gate I penuh (lihat `04-BATCH-LANJUTAN.md`): tap luas + getar, target→getar panjang+visual,
+4. Gate I penuh (lihat `docs/prompts/04-BATCH-LANJUTAN.md`): tap luas + getar, target→getar panjang+visual,
    restart→count tidak hilang, ring=ARC, tidak ada elemen kepotong bezel.
 
 ## Next step
 - **Ahmed (gate I):** install 1.0.5 (BUILD `b31`) → kartu Tasbih → uji 4 poin di atas + tashih Arab
   → pernyataan **LULUS eksplisit** → tag `stable-i1`. (Gate HANYA ditutup Ahmed, bukan agent.)
-- Setelah LULUS: **Batch H — Jadwal Sholat** (`04-BATCH-LANJUTAN.md`, runner cc-deep; mesin hitung
+- Setelah LULUS: **Batch H — Jadwal Sholat** (`docs/prompts/04-BATCH-LANJUTAN.md`, runner cc-deep; mesin hitung
   astronomi, teliti). Tasbih duluan karena paling sederhana (tanpa sensor/lokasi) — sudah selesai.
 
 ## Files touched (Batch I, belum commit)
 `page/tasbih.js` (baru) · `page/index.js` (wire kartu) · `app.json` (daftar page, v1.0.5 code 6) ·
 `page/theme.js` (BUILD b31) · `docs/context/PROJECT-STATE.md` (file ini) ·
-`04-BATCH-LANJUTAN.md` (spec Batch I–P, sebelumnya untracked — ikut di-commit)
+`docs/prompts/04-BATCH-LANJUTAN.md` (spec Batch I–P)
 
 ## Checkpoint
 - **stable-b18** — Mushaf per-halaman awal (sebelum per-line rendering fix).
@@ -67,5 +67,4 @@ Updated: 2026-07-20 | Mesin: ryzencachy
 Proyek ini dikerjakan bergantian di cachymac & ryzencachy.
 ATURAN WAJIB: **`git pull` di awal SETIAP sesi, `git push` di akhir SETIAP sesi walau baru WIP —
 tidak terkecuali.** Jangan buka clo/glm di project ini di 2 mesin bersamaan.
-⚠ Ada **dua `PROJECT-STATE.md`**: `docs/context/` (kanonik, per AGENTS.md — yang ini) dan root
-(stale, beku Batch B b6 dari cachymac). Perlu dikonsolidasi (hapus/symlink root) — lihat chat.
+Sumber PROJECT-STATE tunggal: `docs/context/PROJECT-STATE.md` (root duplikat b6 dihapus 2026-07-20).

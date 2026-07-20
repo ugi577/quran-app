@@ -1,5 +1,5 @@
 // Tasbih / Dzikir counter — Batch I
-// Spec: docs/../04-BATCH-LANJUTAN.md (BATCH I). Reuses proven patterns from
+// Spec: docs/prompts/04-BATCH-LANJUTAN.md (BATCH I). Reuses proven patterns from
 // page/index.js (label/fill/tapZone/safeWidth) + page/reader.js (store onInit/onDestroy).
 // Ring progress = ARC widgets (track + fill), NOT 33 CIRCLE widgets.
 //

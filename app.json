@@ -5,7 +5,7 @@
     "appName": "Quran Premium",
     "appType": "app",
     "version": {
-      "code": 7,
+      "code": 8,
       "name": "1.0.6"
     },
     "icon": "icon.png",
@@ -13,7 +13,8 @@
     "description": "Premium Quran companion for the wrist"
   },
   "permissions": [
-    "device:os.local_storage"
+    "device:os.local_storage",
+    "device:os.geolocation"
   ],
   "runtime": {
     "apiVersion": {
@@ -32,6 +33,7 @@
             "page/surah-list",
             "page/tasbih",
             "page/prayer",
+            "page/location",
             "page/settings"
           ]
         }

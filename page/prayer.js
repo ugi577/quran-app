@@ -20,10 +20,11 @@
 //  - setLayerScrolling (from all existing pages)
 //  - setInterval/clearInterval (standard JS runtime, proven in this firmware)
 import * as hmUI from '@zos/ui'
-import { back } from '@zos/router'
+import { back, replace } from '@zos/router'
 import { C, F, BUILD, safeWidth, centerX } from './theme'
-import { calculate, LOCATION, METHODS, MADHAB, toMinutes, nextPrayer, prayerNameId } from './prayer-calc'
+import { calculate, METHODS, MADHAB, toMinutes, nextPrayer, prayerNameId } from './prayer-calc'
 import { formatHijri } from './hijri-calc'
+import { getLocation } from '../src/data/location'
 
 // ═══════════════════════════════════════════
 // Layout constants (466×466 round, CX=CY=233)
@@ -54,6 +55,7 @@ var DISPLAY = ['subuh', 'terbit', 'dzuhur', 'ashar', 'maghrib', 'isya']
 var _timeoutId = null
 var _intervalId = null
 var _times = null
+var _loc = null
 var _countdownW = null
 var _dateW = null
 var _hijriW = null
@@ -172,7 +174,7 @@ function minutesUntil(targetHhmm, nowMin) {
  * Cheap: one calculate() + six setProperty calls. No new timer created.
  */
 function refreshForNewDay(now) {
-  _times = calculate(now, LOCATION, METHODS.kemenag, MADHAB.shafii, 2)
+  _times = calculate(now, _loc, METHODS.kemenag, MADHAB.shafii, 2)
   _dateKey = dateKey(now)
   try {
     _dateW.setProperty(hmUI.prop.MORE, { text: formatDate(now) })
@@ -209,7 +211,7 @@ function updateCountdown() {
     refreshForNewDay(now)
   }
   var nowMin = now.getHours() * 60 + now.getMinutes()
-  var next = nextPrayer(_times, nowMin, LOCATION, METHODS.kemenag)
+  var next = nextPrayer(_times, nowMin, _loc, METHODS.kemenag)
   var remaining = minutesUntil(next.time, nowMin)
   try {
     _countdownW.setProperty(hmUI.prop.MORE, { text: formatCountdown(remaining) })
@@ -243,12 +245,13 @@ Page({
     hmUI.setLayerScrolling(false)
 
     var today = new Date()
+    _loc = getLocation() // active location (preset city or GPS); re-read fresh each build
 
     // ══ Background ══
     fill(0, 0, 466, 466, C.bg)
 
     // ══ Header: city + Masehi date + Hijri date ══
-    label(LOCATION.city, 0, HEADER_Y, 466, 34, C.gold, F.h2)
+    label(_loc.mode === 'auto' ? 'Lokasi GPS' : _loc.city, 0, HEADER_Y, 466, 34, C.gold, F.h2)
 
     _dateW = label(formatDate(today), 0, DATE_Y, 466, 24, C.textMd, F.caption)
 
@@ -258,12 +261,12 @@ Page({
     var divW = safeWidth(DIV_Y, 1, 466)
     fill(centerX(divW), DIV_Y, divW, 1, C.stroke)
 
-    // ══ 5 prayer rows ══
-    _times = calculate(today, LOCATION, METHODS.kemenag, MADHAB.shafii, 2)
+    // ══ 6 prayer rows (5 wajib + Terbit) ══
+    _times = calculate(today, _loc, METHODS.kemenag, MADHAB.shafii, 2)
     _dateKey = dateKey(today)
 
     var nowMin = getNowMinutes()
-    var next = nextPrayer(_times, nowMin, LOCATION, METHODS.kemenag)
+    var next = nextPrayer(_times, nowMin, _loc, METHODS.kemenag)
 
     for (var i = 0; i < DISPLAY.length; i++) {
       var key = DISPLAY[i]
@@ -298,9 +301,14 @@ Page({
     var remaining = minutesUntil(next.time, nowMin)
     _countdownW = label(formatCountdown(remaining), centerX(cdW), COUNTDOWN_Y, cdW, COUNTDOWN_H, C.gold, 34)
 
-    // ══ Back affordance ══
+    // ══ Back affordance (top-left) ══
     tapZone(16, 10, 44, 44, function () { back() })
     label('←', 16, 10, 44, 44, C.textHi, 34)  // ← (U+2190, proven)
+
+    // ══ Ganti Lokasi (top-right corner) — replace→location so prayer.build()
+    //    re-runs FRESH on return (Zepp Page has no onShow; replace forces rebuild) ══
+    tapZone(406, 10, 44, 44, function () { replace({ url: 'page/location' }) })
+    label('GPS', 406, 10, 44, 44, C.goldDim, 18)
 
     // ══ Build marker ══
     label(BUILD, 0, 436, 466, 22, C.textLo, 18)

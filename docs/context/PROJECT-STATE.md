@@ -4,7 +4,7 @@ Updated: 2026-07-21 | Mesin: ryzencachy
 ## Batch: I — CLOSED (`stable-i1`)
 > Sebelumnya **Batch B — CLOSED (`stable-b27`)**. Lihat §Checkpoint.
 
-## Batch: H — Jadwal Sholat · WIP (build `b34`, v1.0.6) — MENUNGGU GATE AHMED
+## Batch: H — Jadwal Sholat · WIP (build `b35`, v1.0.6) — MENUNGGU GATE AHMED
 > Sebelumnya **Batch I — CLOSED (`stable-i1`)**. Lihat §Checkpoint.
 
 ## Done — Batch I (terverifikasi dari kode + build, BUKAN dari watch)
@@ -130,6 +130,51 @@ stale date kalau page dibiarkan foreground melewati tengah malam tanpa di-back. 
   same-day tick (23:51) = mismatch false → no recompute; midnight tick (00:01) = mismatch true →
   recompute + `_dateKey` advance ke 2026-07-22 + next=subuh hari baru. Logika date-key→recompute→refresh konfirmasi benar.
 
+### Done — Batch H b35: Ganti Lokasi (manual + otomatis) (2026-07-21)
+- `src/data/location.js` (BARU, **modul bersama**) — SINGLE source of truth lokasi sholat:
+  - `PRESET_CITIES`: 12 kota (WIB: Bogor/Jakarta/Bandung/Surabaya/Yogyakarta/Medan/Padang ·
+    WITA: Makassar/Denpasar/Palopo · WIT: Jayapura/Ambon). `{id,name,lat,lon}` — **TANPA tz per kota**.
+  - `getLocation()`: baca store `location`, default Bogor; tz dihitung LIVE dari jam sistem.
+  - `setLocationManual(cityId)` / `setLocationAuto(lat,lon)`. `getCurrentTz()` = `-(new Date().getTimezoneOffset())/60`
+    (fallback local−UTC). **Bukan lookup lat/lon** — watch sudah sinkron tz dari HP (paling akurat, hindari salah zona perbatasan).
+- `src/data/store.js`: schema `location` default → `{mode:'manual', cityId:'bogor', lat, lon, city, ts}`.
+  (Catatan: store key sebenarnya `qp.location.v1`, BUKAN `qp.settings.v1.location` seperti draft spec — store punya
+  key `location` terpisah, bukan nested di `settings`.)
+- `page/prayer-calc.js`: hapus `export const LOCATION` (hardcode) → fallback internal `BOGOR_DEFAULT` saja.
+  Engine tetap **PURE** (tidak import storage) supaya tetap Node-testable. Lokasi dikirim caller (`getLocation()`)
+  sebagai param `loc` ke `calculate()`/`nextPrayer()`. Algoritma astronomi tak diubah (sudah tertashih).
+- `page/prayer.js`: `_loc = getLocation()` di `build()` (fresh tiap entry); semua call pakai `_loc`. Header tampil
+  `_loc.city` / "Lokasi GPS". **Tombol "GPS" pojok kanan-atas** → `replace('page/location')`.
+- `page/location.js` (BARU) — layar ganti lokasi:
+  - **Otomatis (GPS)**: `@zos/sensor Geolocation` (terverifikasi `@version 2.1`) — `start()`+`onChange`+
+    `getStatus()==='A'` → `getLatitude/getLongitude` → `setLocationAuto`. **Timeout 20s** → "GPS tidak tersedia,
+    gunakan Manual". Tiap path kasih umpan balik (tidak menggantung). `stop()`+`offChange`+`clearTimeout` di onDestroy.
+  - **Manual**: 12 kota **paginated** (pola surah-list: 4/halaman « », BUKAN SCROLL_LIST — firmware ini
+    SCROLL_LIST tidak render). Tap kota → `setLocationManual` → `replace('page/prayer')`.
+- `app.json`: daftar `page/location`; permission `device:os.geolocation`; version code 7 → **8**.
+- `page/theme.js`: BUILD b34 → **b35**. **`zeus build` HIJAU** (exit 0, **8 file** — location.js jadi entry page).
+  `page/location.bin` 13290 B (`Geolocation`/`getStatus`/`setLocationAuto`/`Mencari lokasi`/`Otomatis (GPS)` terkonfirmasi di bin).
+
+#### Lifecycle refresh (Zepp Page tidak ada onShow)
+Page lifecycle Zepp OS 3.0 = `onInit`/`build`/`onDestroy` saja (verifikasi `device-types/dist/index.d.ts:3511`).
+`back()` ke page yg masih di-stack TIDAK re-run `build()` → prayer↔location pakai `router.replace` kedua arah
+(prayer `replace→location`, location `replace→prayer`) supaya page tujuan di-build fresh (baca `getLocation()` baru).
+Stack stabil: home⇄prayer (push/back), prayer⇄location (replace).
+
+#### Verifikasi Multi-Kota vs Kemenag (21 Jul 2026, tz live dari sistem)
+| Kota (Zona) | Subuh App/Ref | Dzuhur App/Ref | Ashar App/Ref | Maghrib App/Ref | Isya App/Ref | Max |
+|---|---|---|---|---|---|---|
+| Bogor (WIB) | 04:45 / 04:43 | 12:01 / 11:59 | 15:23 / 15:21 | 17:55 / 17:53 | 19:08 / 19:06 | ±2 mnt |
+| Medan (WIB) | 05:02 / 05:03 | 12:34 / 12:35 | 15:58 / 15:59 | 18:43 / 18:44 | 19:57 / 19:57 | ±1 mnt |
+| Makassar (WITA) | 04:53 / 04:53 | 12:11 / 12:12 | 15:33 / 15:34 | 18:06 / 18:08 | 19:20 / 19:21 | ±2 mnt |
+Ref: jadwalsholat.org / Kompas (Kemenag). **Tz path terverifikasi**: kota WITA (tz=8) → waktu WITA lokal;
+tz-invariant check (Bogor-coords tz 7→8→9 = Dzuhur 12:01→13:01→14:01) konfirmasi tz mengalir ke engine.
+
+#### ⚠ Catatan UNTUK NANTI (jangan implementasi sekarang)
+- **Batch J (Qibla)**: REUSE `src/data/location.js` (`getLocation()` utk arah kiblat) — JANGAN bikin modul lokasi baru.
+- **Batch N (Settings)**: REUSE `page/location.js` (link ke halaman yg sama) + `getLocation()`/setter. Halaman location
+  saat ini back→prayer (hanya dibuka dari prayer). Kalau Settings juga buka location, sesuaikan target back (param `from` via `replace({url,params})`).
+
 ## ⚠ Yang WAJIB diverifikasi Ahmed di watch (simulator bohong, AGENTS §1/§5)
 
 ### Gate H — Jadwal Sholat (SOAL IBADAH, teliti)
@@ -151,9 +196,16 @@ stale date kalau page dibiarkan foreground melewati tengah malam tanpa di-back. 
 12. **6 baris + header + countdown MUAT** tanpa kepotong bezel (round 466). Tidak ada teks ter-clip lingkar luar.
 13. **Tanggal Hijriah** tampil di bawah Masehi (mis. "6 Safar 1448 H" utk 21 Jul 2026) — **bandingkan dgn kalender
     NU/Kemenag**, catat selisih di PROJECT-STATE kalau ada. Offset +1 sudah di-set; re-check di bulan Hijri berikutnya.
+14. **Tombol "GPS"** pojok kanan-atas prayer → buka halaman Lokasi (simetris dgn tombol ← back kiri).
+15. **Manual**: pilih Makassar & Medan → bandingkan dgn Kemenag kota itu (lihat tabel multi-kota) — selisih ≤2 mnt.
+    Jadwal BERUBAH saat kembali ke prayer **tanpa restart app**. Header kota + 6 baris ikut berubah.
+16. **Otomatis (GPS)**: tap → "Mencari lokasi..." → DAPAT FIX (koordinat tampil) ATAU timeout 20s "GPS tidak tersedia,
+    gunakan Manual". Keduanya OK — yg penting TIDAK menggantung/crash. Pastikan GPS distop saat keluar halaman (cek log `[location] onDestroy`).
+17. **Timezone benar**: pilih kota WITA (Makassar/Denpasar) → Dzuhur ~12:1x WITA (bukan WIB+1j). Pilih Jayapura (WIT) →
+    Dzuhur ~11:45. Prasyarat: jam watch diset zona benar via HP. (Kalau tz salah → semua waktu meleset berjam-jam — P0.)
 
 ## Next step
-- **Ahmed (gate H):** install 1.0.6 (BUILD `b34`) → uji 13 poin di atas → **LULUS eksplisit** → tag `stable-h1`.
+- **Ahmed (gate H):** install 1.0.6 (BUILD `b35`, code 8) → uji 17 poin di atas → **LULUS eksplisit** → tag `stable-h1`.
 - Setelah LULUS: **Batch J — Qibla** (compass + arah kiblat, `docs/prompts/04-BATCH-LANJUTAN.md`).
 
 ## Files touched (Batch H, committed)
@@ -163,6 +215,9 @@ stale date kalau page dibiarkan foreground melewati tengah malam tanpa di-back. 
 **b33 (midnight rollover fix):** `page/prayer.js` + `page/theme.js` + PROJECT-STATE.
 **b34 (terbit + hijri):** `page/prayer-calc.js` (terbit no-ihtiyat, exclude nextPrayer) ·
 `page/hijri-calc.js` (BARU) · `page/prayer.js` (6 baris + hijri header) · `page/theme.js` (BUILD b34) · PROJECT-STATE.
+**b35 (ganti lokasi):** `src/data/location.js` (BARU — modul bersama) · `page/location.js` (BARU — layar) ·
+`page/prayer-calc.js` (hapus LOCATION hardcode, engine pure) · `page/prayer.js` (getLocation + tombol GPS) ·
+`src/data/store.js` (schema location) · `app.json` (page/location + geolocation perm + code 8) · `page/theme.js` (BUILD b35) · PROJECT-STATE.
 
 ## Checkpoint
 - **stable-b18** — Mushaf per-halaman awal (sebelum per-line rendering fix).

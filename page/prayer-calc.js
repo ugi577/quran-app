@@ -14,11 +14,15 @@
 // CONSTANTS — single source for location
 // ═══════════════════════════════════════════
 
-/** Default location (Bogor). Used by Batch H prayer + Batch J Qibla. DO NOT DUPLICATE. */
-export const LOCATION = {
+// Internal fallback ONLY. The real location is supplied by the caller via
+// getLocation() (src/data/location.js) — the shared location module (reused by
+// Qibla Batch J + Settings Batch N). The engine deliberately stays PURE: it does
+// not import the storage layer, so it remains Node-testable. This constant is used
+// solely when a caller omits `loc` (defensive; the prayer screen always passes one).
+var BOGOR_DEFAULT = {
   lat: -6.595,
   lon: 106.816,
-  tz: 7,         // UTC+7 (WIB, no DST)
+  tz: 7, // UTC+7 (WIB) — fallback only; live tz comes from getLocation()
   city: 'Bogor',
 }
 
@@ -151,7 +155,7 @@ function asrAltitude(latDeg, decRad, shadow) {
  * Calculate all 6 prayer times for a given date and location.
  *
  * @param {Date} date — JS Date (local time)
- * @param {object} loc — {lat, lon, tz} (use LOCATION for Bogor)
+ * @param {object} loc — {lat, lon, tz} from getLocation() (src/data/location.js)
  * @param {object} method — {fajr, isha} sun-depression angles
  * @param {number} madhab — MADHAB.shafii (1) or MADHAB.hanafi (2)
  * @param {number} ihtiyat — extra minutes added to each time (default 2)
@@ -159,7 +163,7 @@ function asrAltitude(latDeg, decRad, shadow) {
  *          All times in HH:MM (24h, local timezone).
  */
 export function calculate(date, loc, method, madhab, ihtiyat) {
-  if (!loc) loc = LOCATION
+  if (!loc) loc = BOGOR_DEFAULT
   if (!method) method = METHODS.kemenag
   if (madhab == null) madhab = MADHAB.shafii
   if (ihtiyat == null) ihtiyat = IHTIYAT
@@ -265,7 +269,7 @@ export function nextPrayer(times, nowMin, loc, method) {
   // All prayers today have passed → next is tomorrow's Subuh
   var tomorrow = new Date()
   tomorrow.setDate(tomorrow.getDate() + 1)
-  var tomorrowTimes = calculate(tomorrow, loc || LOCATION, method || METHODS.kemenag, MADHAB.shafii, IHTIYAT)
+  var tomorrowTimes = calculate(tomorrow, loc || BOGOR_DEFAULT, method || METHODS.kemenag, MADHAB.shafii, IHTIYAT)
   return { name: 'subuh', time: tomorrowTimes.subuh }
 }
 

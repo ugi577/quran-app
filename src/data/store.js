@@ -109,11 +109,12 @@ const SCHEMA = {
   location: {
     version: 1,
     default: {
-      lat: 0,
-      lon: 0,
-      city: '',
+      mode: 'manual',     // 'manual' (preset city) | 'auto' (GPS)
+      cityId: 'bogor',
+      lat: -6.595,
+      lon: 106.816,
+      city: 'Bogor',
       ts: 0,
-      source: 'gps',
     },
   },
 }

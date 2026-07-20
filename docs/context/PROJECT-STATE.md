@@ -4,7 +4,7 @@ Updated: 2026-07-21 | Mesin: ryzencachy
 ## Batch: I — CLOSED (`stable-i1`)
 > Sebelumnya **Batch B — CLOSED (`stable-b27`)**. Lihat §Checkpoint.
 
-## Batch: H — Jadwal Sholat · WIP (build `b35`, v1.0.6) — MENUNGGU GATE AHMED
+## Batch: H — Jadwal Sholat · WIP (build `b36`, v1.0.6) — MENUNGGU GATE AHMED
 > Sebelumnya **Batch I — CLOSED (`stable-i1`)**. Lihat §Checkpoint.
 
 ## Done — Batch I (terverifikasi dari kode + build, BUKAN dari watch)
@@ -196,7 +196,8 @@ tz-invariant check (Bogor-coords tz 7→8→9 = Dzuhur 12:01→13:01→14:01) ko
 12. **6 baris + header + countdown MUAT** tanpa kepotong bezel (round 466). Tidak ada teks ter-clip lingkar luar.
 13. **Tanggal Hijriah** tampil di bawah Masehi (mis. "6 Safar 1448 H" utk 21 Jul 2026) — **bandingkan dgn kalender
     NU/Kemenag**, catat selisih di PROJECT-STATE kalau ada. Offset +1 sudah di-set; re-check di bulan Hijri berikutnya.
-14. **Tombol "GPS"** pojok kanan-atas prayer → buka halaman Lokasi (simetris dgn tombol ← back kiri).
+14. **"Ganti Lokasi"** TERLIHAT di header prayer (di bawah nama kota, goldBright) & BISA DI-TAP → buka
+    halaman Lokasi. (Bukan tombol sudut — yang lama "GPS" di pojok kanan-atas ter-clip bezel, tak terlihat.)
 15. **Manual**: pilih Makassar & Medan → bandingkan dgn Kemenag kota itu (lihat tabel multi-kota) — selisih ≤2 mnt.
     Jadwal BERUBAH saat kembali ke prayer **tanpa restart app**. Header kota + 6 baris ikut berubah.
 16. **Otomatis (GPS)**: tap → "Mencari lokasi..." → DAPAT FIX (koordinat tampil) ATAU timeout 20s "GPS tidak tersedia,
@@ -205,7 +206,7 @@ tz-invariant check (Bogor-coords tz 7→8→9 = Dzuhur 12:01→13:01→14:01) ko
     Dzuhur ~11:45. Prasyarat: jam watch diset zona benar via HP. (Kalau tz salah → semua waktu meleset berjam-jam — P0.)
 
 ## Next step
-- **Ahmed (gate H):** install 1.0.6 (BUILD `b35`, code 8) → uji 17 poin di atas → **LULUS eksplisit** → tag `stable-h1`.
+- **Ahmed (gate H):** install 1.0.6 (BUILD `b36`, code 8) → uji 17 poin di atas → **LULUS eksplisit** → tag `stable-h1`.
 - Setelah LULUS: **Batch J — Qibla** (compass + arah kiblat, `docs/prompts/04-BATCH-LANJUTAN.md`).
 
 ## Files touched (Batch H, committed)
@@ -218,6 +219,22 @@ tz-invariant check (Bogor-coords tz 7→8→9 = Dzuhur 12:01→13:01→14:01) ko
 **b35 (ganti lokasi):** `src/data/location.js` (BARU — modul bersama) · `page/location.js` (BARU — layar) ·
 `page/prayer-calc.js` (hapus LOCATION hardcode, engine pure) · `page/prayer.js` (getLocation + tombol GPS) ·
 `src/data/store.js` (schema location) · `app.json` (page/location + geolocation perm + code 8) · `page/theme.js` (BUILD b35) · PROJECT-STATE.
+**b36 (fix akses location):** `page/prayer.js` (hapus tombol sudut "GPS" yg ter-clip bezel → ganti label
+"Ganti Lokasi" tappable di header bawah nama kota; ROW_H 40→38, header dipadatkan) · `page/theme.js` (BUILD b36) · PROJECT-STATE.
+
+## ⚠ LESSON — verifikasi END-TO-END, bukan halaman berdiri sendiri (bug b35→b36)
+**Bug:** `page/location.js` b35 sudah lengkap + terdaftar di app.json, DAN ada "tombol" akses di prayer.js —
+TAPI tombol itu (label "GPS" kecil di pojok kanan-atas `(406,10,44,44)`) **ter-clip bezel**: pusat teks
+`(428,32)` berada di dist 280 dari pusat layar, DI LUAR lingkaran dalam (r=233) → label tak terlihat /
+tak discoverable. Hasilnya: halaman location praktis **tidak bisa diakses** dari mana pun.
+**Fix b36:** ganti dgn **"Ganti Lokasi"** tappable di HEADER (bawah nama kota) — di zona aman bezel
+(chord 305px vs teks 95px ✓). `ROW_H` 40→38 supaya muat tanpa ganggu 6 baris+countdown.
+**Kenapa terlewat:** b35 diverifikasi halaman-per-halaman (location.js berdiri sendiri OK, prayer.js build OK,
+zeus build HIJAU) — tapi **alur lengkapnya tidak** (tap titik masuk → buka location → pilih kota → kembali →
+jadwal berubah). Titik masuknya sendiri tak pernah dicek visibilitasnya di bezel.
+**Aturan ke depan:** setiap halaman baru WAJIB diverifikasi **end-to-end dari titik masuk nyata** — bukan cuma
+"halaman ini compile + jalan kalau dibuka langsung". Cek: (1) ada titik masuk yg terlihat & tappable di bezel,
+(2) alur navigasi penuh sampai efek terlihat. `zeus build` hijau ≠ user bisa mencapai fitur.
 
 ## Checkpoint
 - **stable-b18** — Mushaf per-halaman awal (sebelum per-line rendering fix).

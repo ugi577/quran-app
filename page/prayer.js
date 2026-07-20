@@ -31,13 +31,14 @@ import { getLocation } from '../src/data/location'
 // ═══════════════════════════════════════════
 
 var CX = 233
-var HEADER_Y = 16     // city
-var DATE_Y = 52       // Masehi date
-var HIJRI_Y = 78      // Hijri date (NEW)
-var DIV_Y = 104
-var ROW_START_Y = 110 // first row
-var ROW_H = 40        // was 48 — compressed to fit 6 rows within the bezel
-var ROW_GAP = 4       // was 6 — tighter
+var HEADER_Y = 14     // city
+var GANTI_Y = 48      // "Ganti Lokasi" tappable affordance (under the city name)
+var DATE_Y = 66       // Masehi date
+var HIJRI_Y = 90      // Hijri date
+var DIV_Y = 114
+var ROW_START_Y = 118 // first row
+var ROW_H = 38        // compressed (was 40) to fit the Ganti Lokasi line in the header
+var ROW_GAP = 4
 var COUNTDOWN_Y = 376
 var COUNTDOWN_H = 54
 
@@ -250,8 +251,16 @@ Page({
     // ══ Background ══
     fill(0, 0, 466, 466, C.bg)
 
-    // ══ Header: city + Masehi date + Hijri date ══
+    // ══ Header: city + "Ganti Lokasi" (both tappable → change location) + dates ══
+    // Tap zone drawn FIRST (covers city + Ganti Lokasi); the labels render on top and
+    // taps pass through to it. replace→location so prayer.build() re-runs FRESH on
+    // return (Zepp Page has no onShow). This replaces the old cryptic corner "GPS"
+    // button, which sat outside the bezel safe circle and was effectively invisible.
+    var cityTapW = 280
+    tapZone(centerX(cityTapW), HEADER_Y, cityTapW, 52, function () { replace({ url: 'page/location' }) })
+
     label(_loc.mode === 'auto' ? 'Lokasi GPS' : _loc.city, 0, HEADER_Y, 466, 34, C.gold, F.h2)
+    label('Ganti Lokasi', 0, GANTI_Y, 466, 18, C.goldBright, 16)
 
     _dateW = label(formatDate(today), 0, DATE_Y, 466, 24, C.textMd, F.caption)
 
@@ -305,10 +314,8 @@ Page({
     tapZone(16, 10, 44, 44, function () { back() })
     label('←', 16, 10, 44, 44, C.textHi, 34)  // ← (U+2190, proven)
 
-    // ══ Ganti Lokasi (top-right corner) — replace→location so prayer.build()
-    //    re-runs FRESH on return (Zepp Page has no onShow; replace forces rebuild) ══
-    tapZone(406, 10, 44, 44, function () { replace({ url: 'page/location' }) })
-    label('GPS', 406, 10, 44, 44, C.goldDim, 18)
+    // (Ganti Lokasi entry = the tappable city/"Ganti Lokasi" header above. No corner
+    //  button: the old "GPS" corner label sat outside the bezel safe circle — invisible.)
 
     // ══ Build marker ══
     label(BUILD, 0, 436, 466, 22, C.textLo, 18)

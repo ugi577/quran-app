@@ -1,10 +1,11 @@
 # PROJECT-STATE — Quran Premium
 Updated: 2026-07-20 | Mesin: ryzencachy
 
-## Batch: I — Tasbih · WIP (build `b31`, v1.0.5) — MENUNGGU GATE AHMED
+## Batch: I — CLOSED (`stable-i1`)
 > Sebelumnya **Batch B — CLOSED (`stable-b27`)**. Lihat §Checkpoint.
 
 ## Done — Batch I (terverifikasi dari kode + build, BUKAN dari watch)
+- **Tasbih counter — ARC ring, haptic, 5 preset dzikir, persist `qp.tasbih.v1` — LULUS gate Ahmed [2026-07-20]**
 - `page/tasbih.js` baru — counter dzikir per spec `docs/prompts/04-BATCH-LANJUTAN.md` (BATCH I):
   - Angka BESAR tengah (`F.display` 96, `C.textHi`; → `C.emeraldBright` saat target tercapai)
   - Teks dzikir aktif di atas (C.gold, 26), "Target: N" di bawah (C.textLo, 22)
@@ -36,12 +37,9 @@ Updated: 2026-07-20 | Mesin: ryzencachy
    restart→count tidak hilang, ring=ARC, tidak ada elemen kepotong bezel.
 
 ## Next step
-- **Ahmed (gate I):** install 1.0.5 (BUILD `b31`) → kartu Tasbih → uji 4 poin di atas + tashih Arab
-  → pernyataan **LULUS eksplisit** → tag `stable-i1`. (Gate HANYA ditutup Ahmed, bukan agent.)
-- Setelah LULUS: **Batch H — Jadwal Sholat** (`docs/prompts/04-BATCH-LANJUTAN.md`, runner cc-deep; mesin hitung
-  astronomi, teliti). Tasbih duluan karena paling sederhana (tanpa sensor/lokasi) — sudah selesai.
+- **Batch H — Jadwal Sholat** (`docs/prompts/04-BATCH-LANJUTAN.md`, runner cc-deep — hitungan astronomi perlu ketelitian).
 
-## Files touched (Batch I, belum commit)
+## Files touched (Batch I, committed)
 `page/tasbih.js` (baru) · `page/index.js` (wire kartu) · `app.json` (daftar page, v1.0.5 code 6) ·
 `page/theme.js` (BUILD b31) · `docs/context/PROJECT-STATE.md` (file ini) ·
 `docs/prompts/04-BATCH-LANJUTAN.md` (spec Batch I–P)
@@ -51,7 +49,7 @@ Updated: 2026-07-20 | Mesin: ryzencachy
   *(Tag `stable-b18` tidak ada di repo — hanya `stable-b20` & `stable-b27` tertag.)*
 - **stable-b20** — 15 baris/halaman cetakan Madinah, basmalah per-surah, per-line render. → `8c79ac9`.
 - **stable-b27** — Pass gate Batch B: reader stabil, icon final, settings 3 stepper, nav «» RTL. → `3fc23a5`.
-- **stable-i1** — (belum) Batch I Tasbih. Menunggu gate Ahmed.
+- **stable-i1** — Batch I Tasbih: ARC ring, haptic, 5 preset dzikir, persist. LULUS gate Ahmed. → `b09ba23`.
 
 ## Arsitektur
 - Zepp OS 3.0 (apiVersion 3.0.0), Amazfit Active 2 Round 466×466, `designWidth: 466`.

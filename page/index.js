@@ -62,7 +62,7 @@ Page({
     const divW = safeWidth(divY, 1)
     fill(centerX(divW), divY, divW, 1, C.stroke)
 
-    // ── 4 menu cards (2×2 grid) ──
+    // ── 6 menu cards (2×3 grid) ──
     const CARD_H = 56
     const GAP = 12
     const gridY = divY + 12
@@ -70,7 +70,9 @@ Page({
     const CARDS = [
       { label: 'القرآن الكريم', url: 'page/surah-list' },
       { label: 'متابعة القراءة', url: 'page/reader' },
+      { label: 'مواقيت الصلاة',  url: 'page/prayer' },
       { label: 'التسبيح',        url: 'page/tasbih' },
+      { label: 'اتجاه القبلة',   url: null },
       { label: 'الإعدادات',      url: 'page/settings' },
     ]
 
@@ -87,7 +89,7 @@ Page({
       const cardX = col === 0 ? gridLeft : gridLeft + cardW + GAP
 
       // Teks card — warna accent
-      const accent = [C.emerald, C.gold, C.emeraldBright, C.textLo][i]
+      const accent = [C.emerald, C.gold, C.goldBright, C.emeraldBright, C.textMd, C.textLo][i]
       label(c.label, cardX, cardY, cardW, CARD_H, accent, 28)
 
       // Tap zone — FILL_RECT invisible + addEventListener (PATTERN QURAN-APP)

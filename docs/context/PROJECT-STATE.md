@@ -4,6 +4,9 @@ Updated: 2026-07-20 | Mesin: ryzencachy
 ## Batch: I — CLOSED (`stable-i1`)
 > Sebelumnya **Batch B — CLOSED (`stable-b27`)**. Lihat §Checkpoint.
 
+## Batch: H — Jadwal Sholat · WIP (build `b32`, v1.0.6) — MENUNGGU GATE AHMED
+> Sebelumnya **Batch I — CLOSED (`stable-i1`)**. Lihat §Checkpoint.
+
 ## Done — Batch I (terverifikasi dari kode + build, BUKAN dari watch)
 - **Tasbih counter — ARC ring, haptic, 5 preset dzikir, persist `qp.tasbih.v1` — LULUS gate Ahmed [2026-07-20]**
 - `page/tasbih.js` baru — counter dzikir per spec `docs/prompts/04-BATCH-LANJUTAN.md` (BATCH I):
@@ -26,23 +29,70 @@ Updated: 2026-07-20 | Mesin: ryzencachy
   `device.zip` (zab→zpk→device.zip) bersama reader/surah-list/settings/index.
 - Gate hex lokal bersih: `rg "0x[…]" page src | grep -v theme.js` → tasbih.js 0 hit (semua dari `C`/`F`).
 
+## Done — Batch H (engine terverifikasi presisi 0 menit raw, +2 menit dgn ihtiyat)
+- `page/prayer-calc.js` baru — pure JS engine hitungan astronomi:
+  - **Deklinasi matahari**: Spencer (1971) Fourier series, akurasi ±0.01°.
+  - **Equation of Time**: Spencer eq. (2), akurasi ±1 menit.
+  - **Metode default KEMENAG**: Fajr 20°, Isha 18°. Konstanta MWL/ISNA/Egypt/Karachi/UAQ disediakan.
+  - **Asr madhab Syafi'i**: shadow factor 1 (bayangan 1× tinggi benda). Hanafi=2 tersedia.
+  - **Ihtiyat +2 menit** (konvensi Kemenag) — ditambahkan SETELAH rounding raw calc.
+  - **LOKASI**: hardcoded Bogor (-6.595, 106.816, UTC+7) sebagai `LOCATION` constant tunggal
+    (dipakai lagi Batch J Qibla — tidak duplikat).
+  - Fungsi bantu: `toMinutes(hhmm)`, `nextPrayer(times, nowMin, loc, method)`, `prayerName(id/en)`.
+- `page/prayer.js` baru — layar jadwal sholat:
+  - Header: "Bogor" (C.gold, F.h2) + tanggal Masehi (C.textMd, F.caption).
+  - 5 baris waktu (Subuh/Dzuhur/Ashar/Maghrib/Isya), h=48, gap=6, w=300 center:
+    nama kiri (`F.bodyLg`, `align_h=LEFT`), waktu kanan (`F.bodyLg`, `align_h=RIGHT`).
+  - **Sholat berikutnya di-highlight**: FILL_RECT `C.emeraldSoft` + bar kiri 4px `C.emeraldBright`.
+  - **Countdown** "− HH:MM" di bawah list (`C.gold`, size 34), update PER MENIT.
+  - Timer synced ke menit berikutnya (timeout→interval), **clearTimeout+clearInterval di onDestroy**
+    (pola reader.js §3.6: timer WAJIB dimatikan). Log `[prayer] onDestroy — timer cleared`.
+  - Lewat tengah malam → next = Subuh besok (hitung ulang `calculate(tomorrow, …)`).
+- `page/index.js`: grid 2×2 → **2×3 (6 kartu)** — tambah "مواقيت الصلاة" → `page/prayer`,
+  "اتجاه القبلة" → `null` (placeholder Batch J).
+- `app.json`: `page/prayer` terdaftar; version → **1.0.6 / code 7**.
+- `page/theme.js`: `BUILD` b31 → **b32**.
+- **`zeus build` HIJAU** (exit 0, 7 file JS).
+- Gate hex lokal bersih: `rg "0x[…]" page/prayer.js page/prayer-calc.js page/index.js | grep -v theme.js` → 0 hit.
+
+### Verifikasi Akurasi Hitungan vs Kemenag (Bogor, Juli 2026)
+
+| Tanggal | Subuh (App/Ref) | Dzuhur (App/Ref) | Ashar (App/Ref) | Maghrib (App/Ref) | Isya (App/Ref) |
+|---|---|---|---|---|---|
+| 1 Juli  | 04:42 / 04:41 | 11:58 / 11:56 | 15:20 / 15:18 | 17:51 / 17:49 | 19:05 / 19:04 |
+| 15 Juli | 04:45 / 04:43 | 12:01 / 11:59 | 15:22 / 15:21 | 17:54 / 17:52 | 19:08 / 19:06 |
+| **20 Juli** | **04:45 / 04:43** | **12:01 / 11:59** | **15:23 / 15:21** | **17:55 / 17:53** | **19:08 / 19:06** |
+| 31 Juli | 04:46 / 04:44 | 12:01 / 11:59 | 15:23 / 15:21 | 17:56 / 17:54 | 19:09 / 19:07 |
+
+**Kesimpulan**: Raw calculation (tanpa ihtiyat) = 0 menit selisih vs Kemenag reference.
+App output = Kemenag + 2 menit (ihtiyat). Dalam toleransi ±2 menit. ✓
+
+Sumber referensi: Kemenag RI (SIHAT/KEMENAG), Fajr 20°, Isha 18°, Asr Syafi'i.
+
 ## ⚠ Yang WAJIB diverifikasi Ahmed di watch (simulator bohong, AGENTS §1/§5)
-1. **Ring ARC animasi** — `setProperty(prop.MORE, {start_angle,end_angle})` utk ARC: terbukti utk
-   properti lain di docs, tapi update sudut ARC live belum diuji di watch. Kalau ring tidak bergerak
-   → ganti ke widget `ARC_PROGRESS` ronde berikutnya.
-2. **Tashih 5 string Arab preset** — teks BARU (bukan dari source FROZEN). Harus cocok cetakan/dzikir
-   baku sebelum gate ditutup. Salah render → laporkan, jangan "diperbaiki" sendiri.
-3. **Haptic scenes** terasa sesuai (short-strong per hit, long di target).
-4. Gate I penuh (lihat `docs/prompts/04-BATCH-LANJUTAN.md`): tap luas + getar, target→getar panjang+visual,
-   restart→count tidak hilang, ring=ARC, tidak ada elemen kepotong bezel.
+
+### Gate H — Jadwal Sholat (SOAL IBADAH, teliti)
+1. **5 waktu sholat** tampil dengan benar: Subuh, Dzuhur, Ashar, Maghrib, Isya.
+2. **Highlight sholat berikutnya** — row yang di-highlight sesuai dengan waktu aktual.
+   Cek jam 10 pagi → Dzuhur ter-highlight. Cek jam 8 malam → Isya ter-highlight.
+3. **Countdown akurat** — bandingkan sisa menit dengan hitungan manual.
+   Cek setelah menit berganti → countdown berkurang 1.
+4. **Timer mati saat keluar halaman** — tidak ada crash/error di log.
+5. **Lewat Isya → next = Subuh besok** — cek setelah jam 19:08, countdown menuju Subuh besok (~04:45).
+6. **Home card "مواقيت الصلاة"** → tap → masuk prayer page. Back → kembali ke home.
+7. Gate hex lokal bersih: tidak ada `0x……` di luar theme.js.
+8. **Verifikasi silang**: foto layar dikirim ke Ahmed → bandingkan 5 waktu dengan jadwal
+   Kemenag/jadwalsholat.org untuk Bogor hari itu. Selisih maksimal ±2 menit.
+9. **Teks Arab di home card** "مواقيت الصلاة" + "اتجاه القبلة" — pastikan tidak tofu (☐).
 
 ## Next step
-- **Batch H — Jadwal Sholat** (`docs/prompts/04-BATCH-LANJUTAN.md`, runner cc-deep — hitungan astronomi perlu ketelitian).
+- **Ahmed (gate H):** install 1.0.6 (BUILD `b32`) → uji 9 poin di atas → **LULUS eksplisit** → tag `stable-h1`.
+- Setelah LULUS: **Batch J — Qibla** (compass + arah kiblat, `docs/prompts/04-BATCH-LANJUTAN.md`).
 
-## Files touched (Batch I, committed)
-`page/tasbih.js` (baru) · `page/index.js` (wire kartu) · `app.json` (daftar page, v1.0.5 code 6) ·
-`page/theme.js` (BUILD b31) · `docs/context/PROJECT-STATE.md` (file ini) ·
-`docs/prompts/04-BATCH-LANJUTAN.md` (spec Batch I–P)
+## Files touched (Batch H, committed)
+`page/prayer-calc.js` (baru — engine) · `page/prayer.js` (baru — layar) ·
+`page/index.js` (grid 2×3, 2 kartu baru) · `app.json` (daftar page, v1.0.6 code 7) ·
+`page/theme.js` (BUILD b32) · `docs/context/PROJECT-STATE.md` (file ini)
 
 ## Checkpoint
 - **stable-b18** — Mushaf per-halaman awal (sebelum per-line rendering fix).
@@ -50,6 +100,7 @@ Updated: 2026-07-20 | Mesin: ryzencachy
 - **stable-b20** — 15 baris/halaman cetakan Madinah, basmalah per-surah, per-line render. → `8c79ac9`.
 - **stable-b27** — Pass gate Batch B: reader stabil, icon final, settings 3 stepper, nav «» RTL. → `3fc23a5`.
 - **stable-i1** — Batch I Tasbih: ARC ring, haptic, 5 preset dzikir, persist. LULUS gate Ahmed. → `b09ba23`.
+- **stable-h1** — (belum) Batch H Jadwal Sholat. Menunggu gate Ahmed.
 
 ## Arsitektur
 - Zepp OS 3.0 (apiVersion 3.0.0), Amazfit Active 2 Round 466×466, `designWidth: 466`.

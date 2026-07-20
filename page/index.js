@@ -72,7 +72,7 @@ Page({
       { label: 'متابعة القراءة', url: 'page/reader' },
       { label: 'مواقيت الصلاة',  url: 'page/prayer' },
       { label: 'التسبيح',        url: 'page/tasbih' },
-      { label: 'اتجاه القبلة',   url: null },
+      { label: 'اتجاه القبلة',   url: 'page/qibla' },
       { label: 'الإعدادات',      url: 'page/settings' },
     ]
 

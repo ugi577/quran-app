@@ -7,6 +7,9 @@ Updated: 2026-07-21 | Mesin: ryzencachy
 ## Batch: H — Jadwal Sholat · WIP (build `b37`, v1.0.6) — MENUNGGU GATE AHMED
 > Sebelumnya **Batch I — CLOSED (`stable-i1`)**. Lihat §Checkpoint.
 
+## Batch: J — Qibla · WIP (build `b38`, v1.0.7) — MENUNGGU GATE AHMED
+> Dikerjakan 2026-07-21. Qibla compass + bearing calculation + calibration UX.
+
 ## Done — Batch I (terverifikasi dari kode + build, BUKAN dari watch)
 - **Tasbih counter — ARC ring, haptic, 5 preset dzikir, persist `qp.tasbih.v1` — LULUS gate Ahmed [2026-07-20]**
 - `page/tasbih.js` baru — counter dzikir per spec `docs/prompts/04-BATCH-LANJUTAN.md` (BATCH I):
@@ -205,9 +208,84 @@ tz-invariant check (Bogor-coords tz 7→8→9 = Dzuhur 12:01→13:01→14:01) ko
 17. **Timezone benar**: pilih kota WITA (Makassar/Denpasar) → Dzuhur ~12:1x WITA (bukan WIB+1j). Pilih Jayapura (WIT) →
     Dzuhur ~11:45. Prasyarat: jam watch diset zona benar via HP. (Kalau tz salah → semua waktu meleset berjam-jam — P0.)
 
+### Gate J — Qibla (SOAL IBADAH, teliti)
+1. **Bearing benar**: Bogor → 295° BL. Bandingkan dengan app qibla HP — selisih ≤ 5°.
+2. **Kompas jalan**: buka qibla → marker hijau terlihat di ring. Putar jam → marker bergerak. Tidak crash.
+3. **Kalibrasi**: uncalibrated → "Gerakkan jam membentuk angka 8" + marker hidden. Goyang angka 8 → calibrated → teks hilang + marker muncul.
+4. **Timeout degraded**: 20 detik uncalibrated → teks "295° BL — Arahkan jam ke utara, lalu putar ke arah penanda". Tidak blank.
+5. **Degraded tanpa compass**: device tanpa compass HW → langsung degraded mode. TIDAK crash, TIDAK marker palsu.
+6. **Alignment visual**: hadap kiblat (~295°) → marker emeraldBright DI ATAS (12 o'clock), align dgn pointer gold. Ini verifikasi paling penting.
+7. **Sensor mati**: keluar qibla → log `[qibla] onDestroy — compass stopped`. Compass TIDAK jalan di background.
+8. **Home card**: tap "اتجاه القبلة" → masuk qibla. Back → home. Tidak crash.
+9. **Teks Arab**: "اتجاه القبلة" — pastikan tidak tofu (☐). (Sudah dicek gate H poin 9 — confirm.)
+10. **Degraded UI**: teks instruksi lengkap, tidak terpotong bezel. Tombol « Kembali berfungsi.
+
+### Done — Batch J b38: Qibla Compass (2026-07-21)
+- `page/qibla-calc.js` (BARU) — pure JS great-circle bearing ke Ka'bah:
+  - `bearingToKaaba(lat, lon)` → derajat 0-360. Formula: atan2(sin Δλ·cos φ₂, cos φ₁·sin φ₂ − sin φ₁·cos φ₂·cos Δλ).
+  - `distanceToKaaba(lat, lon)` — haversine, km.
+  - `directionLabel(deg)` → 'U'|'TL'|'T'|'TG'|'S'|'BD'|'B'|'BL' (Indonesia).
+  - **Verifikasi**: Bogor→Ka'bah=295° BL ✓ (expected ~295°). Makassar=292° B, Medan=293° BL, Ka'bah=0°.
+    Distance Bogor→Ka'bah=7935 km (masuk akal). Semua via Node.
+- `page/qibla.js` (BARU) — layar kompas arah kiblat:
+  - **Header**: "Arah Kiblat" (C.textMd) · bearing besar "295° BL" (C.gold, F.h1) · nama kota (C.textLo).
+  - **Kompas ring ARC-based** (R=130, center 233,233):
+    - Ring utama: ARC 360° line_width 2 C.stroke.
+    - 4 cardinal mark (N/E/S/W): ARC tebal line_width 5 C.textMd + label TEXT.
+    - **Top reference pointer**: ARC emas tipis di 12 o'clock (line_width 7, C.goldBright) — target alignment.
+    - **Qibla direction marker**: ARC DINAMIS line_width 12, C.emeraldBright, lebar 20° — posisi
+      diperbarui tiap onChange compass via `setProperty(hmUI.prop.MORE, {start_angle, end_angle})`.
+      Pola proven dari tasbih (ARC live-update). Saat uncalibrated: disembunyikan (start=end=0).
+    - Center dot: CIRCLE C.gold r=6. Inner accent: CIRCLE C.goldDim r=70.
+  - **Compass sensor** (`@zos/sensor` Compass, @version 3.0, permission `device:os.compass`):
+    - `start()` di build, `stop()` + `offChange()` di onDestroy (WAJIB — boros baterai).
+    - `onChange` → `updateMarker()`: baca `getStatus()` (kalibrasi) + `getDirectionAngle()` (heading 0-360).
+    - **screenAngle = (qiblaBearing − heading + 360) % 360** → konversi ke ARC angle → update marker posisi.
+    - Saat heading=0 (hadap utara): marker di 295° (barat-laut). Saat heading=295 (hadap kiblat): marker di 0° (atas) ✓.
+    - **Initial check**: `updateMarker()` dipanggil sekali setelah `start()` — supaya status kalibrasi / marker
+      tampil langsung tanpa menunggu event onChange pertama.
+  - **Calibration UX**:
+    - `getStatus()===false` atau `getDirectionAngle()==='INVALID'` → marker disembunyikan,
+      teks "Gerakkan jam membentuk angka 8" (C.textLo, F.caption).
+    - Setelah terkalibrasi → teks hilang, marker muncul + bergerak.
+  - **Graceful degrade (timeout 20s)**:
+    - Kalau `new Compass()` throw → langsung degraded.
+    - Kalau setelah 20 detik masih uncalibrated → `showDegraded()`: marker tetap hidden,
+      teks statis "295° BL — Arahkan jam ke utara, lalu putar ke arah penanda".
+    - Timeout di-clear kalau compass berhasil kalibrasi sebelum 20s.
+  - **Back button**: "« Kembali" di y=396 (safe bezel, safeWidth≈125px). tapZone TOPMOST.
+  - **Lifecycle**: Compass stop+offChange+clearTimeout di onDestroy. Log `[qibla] onDestroy — compass stopped`.
+  - **Lokasi**: REUSE `src/data/location.js` (`getLocation()`) — BUKAN modul lokasi baru.
+- `page/index.js`: kartu "اتجاه القبلة" di-wire `null` → `'page/qibla'`.
+- `app.json`: `page/qibla` terdaftar; permission `device:os.compass`; version → **1.0.7 / code 9**.
+- `page/theme.js`: `BUILD` b37 → **b38**.
+- **`zeus build` HIJAU** (exit 0, **9 file JS** — qibla.js + qibla-calc.js menjadi entry page setelah di-bundle).
+- Gate hex lokal bersih: `rg "0x[…]" page/qibla.js page/qibla-calc.js | grep -v theme.js` → 0 hit.
+
+#### Verifikasi Bearing (Node, engine asli qibla-calc)
+| Lokasi | Bearing ke Ka'bah | Arah | Jarak |
+|---|---|---|---|
+| Bogor (-6.595, 106.816) | 295° | BL (Barat Laut) | 7935 km |
+| Makassar (-5.147, 119.432) | 292° | B (Barat) | — |
+| Medan (3.595, 98.672) | 293° | BL | — |
+| Ka'bah (21.4225, 39.8262) | 0° | U | ~0 km |
+
+Bogor≈295° sesuai ekspektasi spec ("Bearing Bogor→Ka'bah ≈ 295° (barat-laut)"). ✓
+
+#### Verifikasi Rotasi Marker (Node, simulasi heading 0→360)
+| Heading (hadap jam) | screenAngle | Posisi Marker di Layar |
+|---|---|---|
+| 0° (12↑ = Utara) | 295° | Kiri-atas (Barat Laut) |
+| 90° (12↑ = Timur) | 205° | Kiri-bawah |
+| 180° (12↑ = Selatan) | 115° | Kanan-bawah |
+| 270° (12↑ = Barat) | 25° | Kanan-atas |
+| **295° (12↑ = Kiblat)** | **0°** | **ATAS (12 o'clock) ✓** |
+
+Saat pengguna menghadap kiblat, marker emerald tepat di pointer emas 12 o'clock — alignment visual jelas.
+
 ## Next step
-- **Ahmed (gate H):** install 1.0.6 (BUILD `b37`, code 8) → uji 17 poin di atas → **LULUS eksplisit** → tag `stable-h1`.
-- Setelah LULUS: **Batch J — Qibla** (compass + arah kiblat, `docs/prompts/04-BATCH-LANJUTAN.md`).
+- **Ahmed (gate H):** install 1.0.6 (BUILD `b37`, code 8) → uji 17 poin → **LULUS eksplisit** → tag `stable-h1`.
+- **Ahmed (gate J):** install 1.0.7 (BUILD `b38`, code 9) → uji 10 poin di bawah → **LULUS eksplisit** → tag `stable-j1`.
 
 ## Files touched (Batch H, committed)
 **b32 (engine+layar):** `page/prayer-calc.js` (engine) · `page/prayer.js` (layar) ·
@@ -223,6 +301,8 @@ tz-invariant check (Bogor-coords tz 7→8→9 = Dzuhur 12:01→13:01→14:01) ko
 "Ganti Lokasi" tappable di header bawah nama kota; ROW_H 40→38, header dipadatkan) · `page/theme.js` (BUILD b36) · PROJECT-STATE.
 **b37 (fix tap gagal):** `page/prayer.js` (hapus baris teks "Ganti Lokasi" — tap-nya gagal krn tapZone
 digambar DI BAWAH text; ganti ikon CIRCLE di kanan kota + tapZone TOPMOST proven config; header balik 3 baris, ROW_H 38→40) · `page/theme.js` (BUILD b37) · PROJECT-STATE.
+**b38 (qibla compass):** `page/qibla-calc.js` (BARU — bearing engine) · `page/qibla.js` (BARU — kompas ARC + Compass sensor + calibration UX + graceful degrade) ·
+`page/index.js` (wire kartu qibla `null`→`'page/qibla'`) · `app.json` (page/qibla + compass perm + code 9) · `page/theme.js` (BUILD b38) · PROJECT-STATE.
 
 ## ⚠ LESSON — verifikasi END-TO-END, bukan halaman berdiri sendiri (bug b35→b36)
 **Bug:** `page/location.js` b35 sudah lengkap + terdaftar di app.json, DAN ada "tombol" akses di prayer.js —

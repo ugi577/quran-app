@@ -5,8 +5,8 @@
     "appName": "Quran Premium",
     "appType": "app",
     "version": {
-      "code": 8,
-      "name": "1.0.6"
+      "code": 9,
+      "name": "1.0.7"
     },
     "icon": "icon.png",
     "vender": "zepp",
@@ -14,7 +14,8 @@
   },
   "permissions": [
     "device:os.local_storage",
-    "device:os.geolocation"
+    "device:os.geolocation",
+    "device:os.compass"
   ],
   "runtime": {
     "apiVersion": {
@@ -34,6 +35,7 @@
             "page/tasbih",
             "page/prayer",
             "page/location",
+            "page/qibla",
             "page/settings"
           ]
         }

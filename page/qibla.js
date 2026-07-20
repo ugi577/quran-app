@@ -1,23 +1,18 @@
-// Qibla compass — Quran Premium Batch J (b39: real-compass rewrite)
+// Qibla compass — Quran Premium Batch J
 //
-// FIX HISTORY (b39 — root cause of "statis, tdk sebaik compas asli jam"):
-//  1. ARC widgets now use the REQUIRED x/y/w/h bounding box. The b38 code passed
-//     center_x/center_y (valid for CIRCLE, IGNORED by ARC) with no x/y/w/h, so every
-//     arc — ring, ticks, top reference AND the dynamic qibla needle — rendered into a
-//     0×0 box and was invisible. Verified vs docs.zepp.com + page/tasbih.js:
-//     ARC = {x,y,w,h,radius,start_angle,end_angle,line_width,color}; 0°=3 o'clock, CW.
-//  2. The WHOLE rose (U/T/S/B ticks + labels) now rotates so U points to true north,
-//     like a real watch compass — not a frozen dial with only a tiny marker moving.
-//  3. A ~120ms poll timer drives updates (with a 1° throttle) instead of relying only
-//     on Compass.onChange, which the OS coalesces into coarse, laggy steps.
-//     setFreqMode is NOT used — it is API_LEVEL 4.0+ and this app targets 3.0.
-//  4. Degrade is no longer terminal: a compass that just needed a longer figure-8
-//     recovers to live as soon as it calibrates.
-//  5. Transient INVALID frames are debounced — no needle flicker / prompt flashing.
-//  6. Haptic + colour + text confirmation when the watch faces qibla, plus a live
-//     "Putar X° ke kiri/kanan" hint and distance to the Ka'bah.
+// b40 (POLISH, murni visual — logika Compass/sensor & qibla-calc TIDAK diubah):
+//   Bezel tetap gaya G-Shock (ring + tick 30° + huruf U/T/S/B statik, presisi di
+//   tepi ring) + SATU jarum kiblat emas (arrowhead runcing) yang berputar ke arah
+//   qibla = (qiblaBearing − heading). Ikon Ka'bah minimalis di pusat. Layout
+//   vertikal dirapikan: header → ring → jarak → status → «Kembali (tak overlap).
+//   Semua ARC pakai bounding box x/y/w/h (helper arc()) — center_x/center_y milik
+//   CIRCLE saja; ARC menggambar di dalam kotak x/y/w/h.
 //
-// ⚠ PERMISSION: Compass needs device:os.compass (app.json). Zepp OS 3.0+.
+// b39 (fungsi): ARC box fix (root "statis"), poll ~120ms + throttle, degrade yang
+//   bisa pulih, debounce INVALID, haptic + petunjuk arah. setFreqMode TIDAK dipakai
+//   (API 4.0+, target 3.0).
+//
+// ⚠ PERMISSION: device:os.compass (app.json). Zepp OS 3.0+.
 
 import * as hmUI from '@zos/ui'
 import { back } from '@zos/router'
@@ -26,7 +21,7 @@ import { C, F, BUILD, safeWidth, centerX } from './theme'
 import { getLocation, locationLabel } from '../src/data/location'
 import { bearingToKaaba, directionLabel, distanceToKaaba } from './qibla-calc'
 
-// ── helpers (pola index.js + prayer.js + tasbih.js) ──
+// ── helpers ──
 
 function label(text, x, y, w, h, color, size) {
   return hmUI.createWidget(hmUI.widget.TEXT, {
@@ -49,10 +44,7 @@ function tapZone(x, y, w, h, cb) {
   return zone
 }
 
-/**
- * ARC with the correct x/y/w/h bounding box derived from a centre + radius.
- * (ARC ignores center_x/center_y — the b38 bug — and draws inside the box.)
- */
+/** ARC with the correct x/y/w/h bounding box (ARC ignores center_x/center_y). */
 function arc(cx, cy, radius, startA, endA, lw, color) {
   return hmUI.createWidget(hmUI.widget.ARC, {
     x: cx - radius, y: cy - radius, w: radius * 2, h: radius * 2,
@@ -62,26 +54,31 @@ function arc(cx, cy, radius, startA, endA, lw, color) {
   })
 }
 
-// ── kompas ring constants ──
+// ── geometry (compass centred on the screen centre) ──
 
 var CX = 233, CY = 233
-var RING_R = 130       // main ring radius
-var LABEL_R = RING_R - 18   // cardinal labels sit just inside the ring (clears header)
-var TICK_W = 4         // cardinal tick half-width in degrees
-var MARKER_W = 10      // qibla marker half-width in degrees
-var TOPREF_W = 3       // top reference half-width
-var MARKER_R = RING_R - 6   // qibla needle + Ka'bah dot radius
+var RING_R = 100       // bezel ring + tick radius (compact — leaves room top+bottom)
+var LABEL_R = 76       // U/T/S/B just inside the rim (di tepi, tidak menempel garis)
 var ALIGN_TOL = 5      // ± degrees counted as "facing qibla"
-var POLL_MS = 120      // compass poll cadence
-var LOST_DEBOUNCE = 6  // invalid frames tolerated before re-prompting calibration
+var POLL_MS = 120
+var LOST_DEBOUNCE = 6
 
-// Cardinal points — world bearing (CW from true north) + Indonesian label.
-// U (Utara) is highlighted gold so the user can orient the rotating rose at a glance.
+// Qibla arrowhead: tapering stack of ARCs, sharp apex at the rim pointing OUTWARD
+// to qibla (wide base near centre → sharp tip at the ring). One coherent gold needle.
+var HEAD_SEGS = [
+  { r: 84,  hw: 6.0, lw: 7 },
+  { r: 89,  hw: 4.5, lw: 8 },
+  { r: 94,  hw: 3.0, lw: 8 },
+  { r: 98,  hw: 1.7, lw: 7 },
+  { r: 100, hw: 0.7, lw: 6 },
+]
+
+// Fixed bezel cardinals (screen angle: 0 = top = U, clockwise).
 var CARDS = [
-  { txt: 'U', bearing: 0, col: C.gold },
-  { txt: 'T', bearing: 90, col: C.textMd },
-  { txt: 'S', bearing: 180, col: C.textMd },
-  { txt: 'B', bearing: 270, col: C.textMd },
+  { txt: 'U', deg: 0 },
+  { txt: 'T', deg: 90 },
+  { txt: 'S', deg: 180 },
+  { txt: 'B', deg: 270 },
 ]
 
 /** Screen-angle (0=top, clockwise) → ARC angle (0=3-o'clock, clockwise). */
@@ -116,46 +113,50 @@ Page({
     var distKm = distanceToKaaba(loc.lat, loc.lon)
 
     // ── header ──
-    label('Arah Kiblat', 0, 18, 466, 26, C.textMd, F.caption)
-    label(qiblaDeg + '° ' + qiblaDir, 0, 46, 466, 48, C.gold, F.h1)
-    label(locLbl, 0, 90, 466, 22, C.textLo, F.caption)
+    label('Arah Kiblat', 0, 14, 466, 24, C.textMd, F.caption)
+    label(qiblaDeg + '° ' + qiblaDir, 0, 40, 466, 46, C.gold, F.h1)
+    label(locLbl, 0, 88, 466, 22, C.textLo, F.caption)
 
-    // ── static compass ring (fixed boundary) ──
-    arc(CX, CY, RING_R, 0, 360, 2, C.stroke)
+    // ── bezel ring (thicker, clearer) ──
+    arc(CX, CY, RING_R, 0, 360, 3, C.stroke)
 
-    // ── rotating rose: cardinal ticks + labels (repositioned every update) ──
-    var _ticks = []
-    var _labels = []
-    for (var i = 0; i < CARDS.length; i++) {
-      // tick on the ring — box fixed, only its angles change on rotation
-      _ticks.push(arc(CX, CY, RING_R, -90 - TICK_W, -90 + TICK_W, 5, i === 0 ? C.goldBright : C.textMd))
-      // label just inside the ring — created centred, repositioned on rotation
-      _labels.push(label(CARDS[i].txt, CX - 16, CY - LABEL_R - 12, 32, 24, CARDS[i].col, F.label))
+    // ── tick marks every 30° + cardinals bolder (static bezel) ──
+    for (var t = 0; t < 12; t++) {
+      var td = t * 30
+      var isCard = (td % 90 === 0)
+      var ac = toArc(td)
+      var thw = isCard ? 1.4 : 0.6
+      arc(CX, CY, RING_R, ac - thw, ac + thw, isCard ? 8 : 4, isCard ? C.gold : C.goldDim)
     }
 
-    // ── top reference pointer — static gold mark at 12 o'clock (arah hadap) ──
-    arc(CX, CY, RING_R - 6, -90 - TOPREF_W, -90 + TOPREF_W, 7, C.goldBright)
+    // ── cardinal letters U/T/S/B — fixed, precise, upright, not bold ──
+    for (var i = 0; i < CARDS.length; i++) {
+      var sr = CARDS[i].deg * Math.PI / 180
+      var lx = Math.round(CX + LABEL_R * Math.sin(sr))
+      var ly = Math.round(CY - LABEL_R * Math.cos(sr))
+      label(CARDS[i].txt, lx - 18, ly - 17, 36, 34, C.textMd, 28)
+    }
 
-    // ── qibla direction needle (DYNAMIC) — hidden until first placement ──
-    var _marker = arc(CX, CY, MARKER_R, 0, 0, 12, C.emeraldBright)
+    // ── Ka'bah glyph at centre (geometric silhouette — Zepp TEXT tak render emoji:
+    //    kotak hitam ber-outline emas + pita hizam emas) ──
+    fill(CX - 23, CY - 23, 46, 46, C.gold)   // gold border base
+    fill(CX - 19, CY - 19, 38, 38, C.bg)     // black cube (leaves ~4px gold edge)
+    fill(CX - 19, CY - 5, 38, 5, C.goldDim)  // hizam band
 
-    // Ka'bah dot riding the needle tip
-    var _kaaba = hmUI.createWidget(hmUI.widget.CIRCLE, {
-      center_x: CX, center_y: CY - MARKER_R, radius: 7, color: C.goldBright,
-    })
+    // ── qibla arrowhead (DYNAMIC) — created here, positioned by drawRose ──
+    var _head = []
+    for (var s = 0; s < HEAD_SEGS.length; s++) {
+      var seg = HEAD_SEGS[s]
+      _head.push(arc(CX, CY, seg.r, toArc(0) - seg.hw, toArc(0) + seg.hw, seg.lw, C.gold))
+    }
 
-    // Center dot + inner accent circle
-    hmUI.createWidget(hmUI.widget.CIRCLE, { center_x: CX, center_y: CY, radius: 6, color: C.gold })
-    hmUI.createWidget(hmUI.widget.CIRCLE, { center_x: CX, center_y: CY, radius: 70, color: C.goldDim })
+    // ── distance to the Ka'bah (below the ring) ──
+    label('~' + idNum(distKm) + ' km ke Ka\'bah', 0, 337, 466, 24, C.textLo, F.caption)
 
-    // Distance to the Ka'bah (static info, inside the ring)
-    var wDist = safeWidth(292, 24, 220)
-    label('~' + idNum(distKm) + ' km · Ka\'bah', centerX(wDist), 292, wDist, 24, C.textLo, 20)
+    // ── calibration / turn-hint status (below distance) ──
+    var _statusW = label('', 0, 365, 466, 28, C.textLo, F.caption)
 
-    // ── calibration / turn-hint status area ──
-    var _statusW = label('', 0, 358, 466, 30, C.textLo, F.caption)
-
-    // ── back button (safe bezel) ──
+    // ── back button (safe bezel — proven b38 config, lebar ≈125px di y=396) ──
     var btnY = 396, btnH = 38
     var btnW = safeWidth(btnY, btnH)
     var btnX = centerX(btnW)
@@ -163,53 +164,41 @@ Page({
     tapZone(btnX, btnY, btnW, btnH, function () { back() })
 
     // ── BUILD marker ──
-    label(BUILD, 0, 440, 466, 16, C.textLo, 14)
+    label(BUILD, 0, 442, 466, 16, C.textLo, 14)
 
     function setStatus(text, color) {
       _statusW.setProperty(hmUI.prop.MORE, { text: text, color: color })
     }
 
-    // ── rose + needle placement for a given heading ──
+    // ── qibla needle placement (ONLY the arrowhead moves; bezel is fixed) ──
     // heading = watch-top bearing CW from true north (getDirectionAngle semantics).
-    // Every world bearing B lands at screen angle (B - heading), 0 = top, CW.
+    // Qibla lands at screen angle P = (qiblaBearing − heading), 0 = top, CW.
     function drawRose(heading, live) {
-      for (var j = 0; j < CARDS.length; j++) {
-        var s = (CARDS[j].bearing - heading + 360) % 360
-        var ac = toArc(s)
-        _ticks[j].setProperty(hmUI.prop.MORE, { start_angle: ac - TICK_W, end_angle: ac + TICK_W })
-        var sr = s * Math.PI / 180
-        var lx = Math.round(CX + LABEL_R * Math.sin(sr))
-        var ly = Math.round(CY - LABEL_R * Math.cos(sr))
-        _labels[j].setProperty(hmUI.prop.MORE, { x: lx - 16, y: ly - 12, w: 32, h: 24 })
-      }
-      var sq = (qiblaDeg - heading + 360) % 360
-      var acq = toArc(sq)
-      var delta = ((sq + 180) % 360) - 180  // signed: >0 qibla to the right, <0 to the left
+      var P = (qiblaDeg - heading + 360) % 360
+      var delta = ((P + 180) % 360) - 180  // >0 qibla to the right, <0 to the left
       var aligned = live && Math.abs(delta) <= ALIGN_TOL
-      _marker.setProperty(hmUI.prop.MORE, {
-        start_angle: acq - MARKER_W, end_angle: acq + MARKER_W,
-        color: aligned ? C.goldBright : C.emeraldBright,
-      })
-      var sqr = sq * Math.PI / 180
-      _kaaba.setProperty(hmUI.prop.MORE, {
-        center_x: Math.round(CX + MARKER_R * Math.sin(sqr)),
-        center_y: Math.round(CY - MARKER_R * Math.cos(sqr)),
-        radius: 7,
-      })
+      var col = aligned ? C.goldBright : C.gold
+      var acP = toArc(P)
+      for (var k = 0; k < _head.length; k++) {
+        _head[k].setProperty(hmUI.prop.MORE, {
+          start_angle: acP - HEAD_SEGS[k].hw,
+          end_angle: acP + HEAD_SEGS[k].hw,
+          color: col,
+        })
+      }
       return delta
     }
 
-    // ── COMPASS SENSOR state ──
+    // ── COMPASS SENSOR (unchanged from b39) ──
     var _compass = null
     var _hasCompass = false
-    var _everLive = false        // have we shown at least one live heading?
+    var _everLive = false
     var _wasAligned = false
     var _lastHeading = null
     var _invalidStreak = 0
     var _stopped = false
     var _pollId = null
 
-    // Haptics — one Vibrator, buzz once on entering the aligned zone.
     var _vib = null
     try { _vib = new Vibrator() } catch (e) { console.log('[qibla] vibrator init failed: ' + e) }
     function buzz() {
@@ -236,8 +225,6 @@ Page({
       var r = readCompass()
       if (!r.ok) {
         _invalidStreak++
-        // Only re-prompt after we had been live and lost the signal for a while —
-        // avoids flicker on transient INVALID frames and on slow first calibration.
         if (_everLive && _invalidStreak >= LOST_DEBOUNCE) {
           setStatus('Sinyal kompas lemah — kalibrasi ulang (angka 8)', C.textLo)
         }
@@ -245,7 +232,6 @@ Page({
       }
       _invalidStreak = 0
       var h = r.heading
-      // throttle: skip sub-degree jitter once we are live (steady, no churn)
       if (_everLive && _lastHeading !== null && circAbs(h - _lastHeading) < 1) return
       _lastHeading = h
       _everLive = true
@@ -260,10 +246,9 @@ Page({
       }
     }
 
-    // Draw an initial static preview (north-up) so the face is never blank.
+    // Initial static preview (north-up) so the needle is never blank.
     drawRose(0, false)
 
-    // Init Compass (try-catch: devices without a physical compass may throw)
     try {
       var c = new Compass()
       if (c && typeof c.start === 'function') { _compass = c; _hasCompass = true }
@@ -277,8 +262,7 @@ Page({
       try {
         _compass.onChange(_cb)
         _compass.start()
-        tick() // immediate first read
-        // steady poll — the reliable driver (onChange is coarse / OS-coalesced)
+        tick()
         var loop = function () {
           if (_stopped) return
           tick()
@@ -296,11 +280,10 @@ Page({
         }
       } catch (e) {
         console.log('[qibla] Compass start failed: ' + e)
-        setStatus('Kompas tak tersedia — arahkan atas jam ke penanda hijau', C.textLo)
+        setStatus('Kompas tak tersedia — arahkan atas jam ke jarum emas', C.textLo)
       }
     } else {
-      // No physical compass: honest static fallback (the rose stays north-up).
-      setStatus('Kompas tak tersedia — arahkan atas jam ke penanda hijau', C.textLo)
+      setStatus('Kompas tak tersedia — arahkan atas jam ke jarum emas', C.textLo)
     }
   },
 

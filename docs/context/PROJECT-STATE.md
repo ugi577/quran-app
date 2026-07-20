@@ -7,8 +7,11 @@ Updated: 2026-07-21 | Mesin: ryzencachy
 ## Batch: H — Jadwal Sholat · WIP (build `b37`, v1.0.6) — MENUNGGU GATE AHMED
 > Sebelumnya **Batch I — CLOSED (`stable-i1`)**. Lihat §Checkpoint.
 
-## Batch: J — Qibla · WIP (build `b38`, v1.0.7) — MENUNGGU GATE AHMED
+## Batch: J — Qibla · WIP (build `b40`, v1.0.7) — MENUNGGU GATE AHMED
 > Dikerjakan 2026-07-21. Qibla compass + bearing calculation + calibration UX.
+> b39: fix bug "kompas statis" (ARC wajib box x/y/w/h). b40: polish UI (bezel G-Shock + jarum emas).
+> ⚠ UX BERUBAH sejak b38: marker hijau → **jarum emas (arrowhead) + petunjuk "Putar X° ke kiri/kanan"**;
+>   rose kini **bezel TETAP** (U/T/S/B statik), hanya jarum yang berputar. Lihat §b39/b40 di bawah.
 
 ## Done — Batch I (terverifikasi dari kode + build, BUKAN dari watch)
 - **Tasbih counter — ARC ring, haptic, 5 preset dzikir, persist `qp.tasbih.v1` — LULUS gate Ahmed [2026-07-20]**
@@ -283,9 +286,54 @@ Bogor≈295° sesuai ekspektasi spec ("Bearing Bogor→Ka'bah ≈ 295° (barat-l
 
 Saat pengguna menghadap kiblat, marker emerald tepat di pointer emas 12 o'clock — alignment visual jelas.
 
+### Done — Batch J b39: FIX bug "kompas statis" (2026-07-21)
+**Akar bug (terverifikasi 2× docs.zepp.com + `page/tasbih.js`):** SEMUA widget ARC di qibla.js b38
+(ring, tick, top-reference, marker kiblat) dibuat dengan `center_x/center_y` — itu properti **CIRCLE**,
+**DIABAIKAN** oleh ARC. ARC butuh **bounding box `x/y/w/h`** (menggambar elips di dalam kotak); tanpa itu
+box = 0×0 → **tak ter-render**. Yang tampil hanya teks derajat + CIRCLE (pusat) → user lihat "statis".
+`page/tasbih.js` (proven) memang pakai `x,y,w,h,radius` — itu acuan yang benar.
+- **helper `arc(cx,cy,r,…)`** meng-emit `{x:cx-r,y:cy-r,w:2r,h:2r,radius:r,…}` untuk semua ARC.
+- **Poll timer ~120ms + throttle 1°** (bukan hanya `onChange` yang di-coalesce OS → gerak tersendat).
+  `setFreqMode` **TIDAK dipakai** (API_LEVEL 4.0+; target app 3.0 → akan throw/absen).
+- **Degrade tak lagi terminal**: pulih otomatis saat kompas kalibrasi (b38 `_degraded` terkunci permanen).
+- **Debounce frame INVALID** (`LOST_DEBOUNCE=6`): 1 frame invalid tak lagi menyembunyikan/kedip.
+- **Haptic** (Vibrator SHORT_STRONG) + **petunjuk "Putar X° ke kiri/kanan"** + **jarak "~7.935 km ke Ka'bah"**.
+- Math kiblat/bearing **TIDAK diubah** (workflow adversarial 22 agen konfirmasi `bearingToKaaba` benar, Bogor≈295.3°).
+- **Memori baru** `~/.claude/.../memory/zepp-arc-needs-xywh-box.md` — gotcha ARC-vs-CIRCLE agar tak terulang.
+
+### Done — Batch J b40: POLISH UI (murni visual, 2026-07-21)
+Referensi elemen desain mockup "Qiblah Watch" (gaya G-Shock) — **tema TETAP** AMOLED hitam+gold+emerald
+(DESIGN-SYSTEM), bukan hijau. **Logika Compass/sensor & qibla-calc TIDAK disentuh** (hanya widget/styling).
+- **Model bezel TETAP (G-Shock):** ring + 12 tick tiap 30° (cardinal lebih tebal, `C.gold`; minor `C.goldDim`) +
+  huruf **U/T/S/B statik** (size 28, `C.textMd`, tidak bold, presisi di tepi ring r=76 — tak menempel garis).
+  Ini memperbaiki keluhan "huruf miring/tercoret": dulu label **berputar & menimpa garis/marker** (b39 model
+  rose-berputar); sekarang label diam di 4 posisi bersih. **Hanya jarum kiblat yang berputar.**
+- **Jarum kiblat = arrowhead emas runcing** (stack 5 ARC meruncing, apex di rim menunjuk ke qibla) —
+  ganti "pil kuning tumpul". Pointer segitiga sejati butuh IMG+angle; **IMG belum pernah dipakai di repo &
+  dilarang API unproven (AGENTS §0)** → dipakai primitif ARC terbukti. Apex→emeraldBright... TIDAK: tetap
+  keluarga emas, saat align → `C.goldBright` (lebih terang) + haptic + status emerald.
+- **Ikon Ka'bah minimalis di pusat** (geometric — Zepp TEXT tak render emoji 🕋 → **verifikasi: pakai bentuk**):
+  3 FILL_RECT = kotak ber-outline emas + pita hizam `C.goldDim`. Ganti "gold solid polos".
+- **Ring lebih jelas**: line_width 2→3.
+- **Layout vertikal** (verifikasi Node — 0 overlap, 0 clip bezel): "Arah Kiblat"(y14) → "295° BL"(h1,y40) →
+  kota(y88) → **RING** (pusat 233, R=100, 133–333) → **jarak+Ka'bah**(y337) → **status**(y365) →
+  **«Kembali**(y396, safeWidth≈124, proven b38) → BUILD(y442). Semua sudut < r=213/233.
+- **Status**: hanya "✓ Menghadap kiblat" (`C.emeraldBright`) saat align ±5°; selain itu "Putar X° ke kiri/kanan"
+  (`C.textMd`); saat kalibrasi "Gerakkan jam membentuk angka 8". Tak ada baris kosong aneh.
+- ⚠ Catatan jujur: **`center_x`/`center_y` tetap valid & dipakai untuk CIRCLE**; yang salah dulu hanya ARC.
+  Di b40 tak ada CIRCLE lagi (pusat pakai FILL_RECT), Ka'bah dot dihapus (diganti glyph pusat + arrowhead).
+- **Gate hex lokal bersih**: `rg "0x……" page | grep -v theme.js` → 0 hit. Sintaks Node OK.
+- ⚠ **BELUM `zeus preview` / foto watch** (tak bisa dari sesi ini) — **WAJIB Ahmed**: foto 2 kondisi
+  (belum align: derajat beda; sudah align: "✓ Menghadap kiblat"), cek arrowhead/huruf/Ka'bah rapi tak terpotong.
+
+#### ⚠ Superseded — Gate J poin lama (b38) yang BERUBAH di b39/b40
+- Poin 2/3/6: "marker **hijau**" → sekarang **jarum emas (arrowhead)**; align → jarum di ATAS + `goldBright` + haptic.
+- Poin 4: "timeout 20s degraded" → **dihapus**; status live "Putar X°…" / "Sinyal lemah — kalibrasi ulang".
+- Poin 1/5/7/8/9/10 tetap berlaku. Tambah cek: **huruf U/T/S/B rapi tak miring**, **ikon Ka'bah pusat tampil**.
+
 ## Next step
 - **Ahmed (gate H):** install 1.0.6 (BUILD `b37`, code 8) → uji 17 poin → **LULUS eksplisit** → tag `stable-h1`.
-- **Ahmed (gate J):** install 1.0.7 (BUILD `b38`, code 9) → uji 10 poin di bawah → **LULUS eksplisit** → tag `stable-j1`.
+- **Ahmed (gate J):** install 1.0.7 (BUILD `b40`, code 9) → uji poin di bawah (lihat §Superseded utk yang berubah) → **LULUS eksplisit** → tag `stable-j1`.
 
 ## Files touched (Batch H, committed)
 **b32 (engine+layar):** `page/prayer-calc.js` (engine) · `page/prayer.js` (layar) ·
@@ -303,6 +351,8 @@ Saat pengguna menghadap kiblat, marker emerald tepat di pointer emas 12 o'clock 
 digambar DI BAWAH text; ganti ikon CIRCLE di kanan kota + tapZone TOPMOST proven config; header balik 3 baris, ROW_H 38→40) · `page/theme.js` (BUILD b37) · PROJECT-STATE.
 **b38 (qibla compass):** `page/qibla-calc.js` (BARU — bearing engine) · `page/qibla.js` (BARU — kompas ARC + Compass sensor + calibration UX + graceful degrade) ·
 `page/index.js` (wire kartu qibla `null`→`'page/qibla'`) · `app.json` (page/qibla + compass perm + code 9) · `page/theme.js` (BUILD b38) · PROJECT-STATE.
+**b39 (fix statis):** `page/qibla.js` (ARC box x/y/w/h + poll + degrade recover + debounce + haptic + turn hint) · `page/theme.js` (BUILD b39) · PROJECT-STATE. **app.json TIDAK diubah.**
+**b40 (polish UI):** `page/qibla.js` (bezel G-Shock tetap + jarum emas arrowhead + Ka'bah glyph + layout) · `page/theme.js` (BUILD b40) · PROJECT-STATE. **app.json & qibla-calc.js TIDAK diubah.**
 
 ## ⚠ LESSON — verifikasi END-TO-END, bukan halaman berdiri sendiri (bug b35→b36)
 **Bug:** `page/location.js` b35 sudah lengkap + terdaftar di app.json, DAN ada "tombol" akses di prayer.js —

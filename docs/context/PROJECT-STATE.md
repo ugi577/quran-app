@@ -4,7 +4,7 @@ Updated: 2026-07-21 | Mesin: ryzencachy
 ## Batch: I — CLOSED (`stable-i1`)
 > Sebelumnya **Batch B — CLOSED (`stable-b27`)**. Lihat §Checkpoint.
 
-## Batch: H — Jadwal Sholat · WIP (build `b33`, v1.0.6) — MENUNGGU GATE AHMED
+## Batch: H — Jadwal Sholat · WIP (build `b34`, v1.0.6) — MENUNGGU GATE AHMED
 > Sebelumnya **Batch I — CLOSED (`stable-i1`)**. Lihat §Checkpoint.
 
 ## Done — Batch I (terverifikasi dari kode + build, BUKAN dari watch)
@@ -55,6 +55,42 @@ Updated: 2026-07-21 | Mesin: ryzencachy
 - **`zeus build` HIJAU** (exit 0, 7 file JS).
 - Gate hex lokal bersih: `rg "0x[…]" page/prayer.js page/prayer-calc.js page/index.js | grep -v theme.js` → 0 hit.
 
+### Done — Batch H b34: waktu Terbit + tanggal Hijriah (2026-07-21)
+- `page/prayer-calc.js`: `toHHMM(hrs, margin)` — Terbit pakai margin 0 (**TANPA ihtiyat**; hanya 5 waktu
+  wajib yang +2 menit, konvensi Kemenag). Terbit = sunrise astronomis (matahari −0.833° di horizon) — BUKAN
+  "sudut sama dgn Subuh" seperti draft spec (itu akan terlalu lambat); engine sudah pakai −0.833° yang benar.
+- `page/prayer-calc.js`: `nextPrayer` ORDER = `['subuh','dzuhur','ashar','maghrib','isya']` — **'terbit'
+  dikeluarkan** dari kandidat → tidak pernah di-highlight sebagai "sholat berikutnya".
+- `page/hijri-calc.js` (BARU, pure JS) — konversi Masehi→Hijriah algoritma **tabular (Kuwaiti)**, di-reuse
+  dari converter terbukti di `~/Projects/mahad-askar-app-v2` (node_modules/hijri-date). `HIJRI_OFFSET`
+  constant utk align dgn rukyat lokal. `formatHijri(date)` → "19 Muharram 1448 H".
+- `page/prayer.js`:
+  - **6 baris** sekarang (Subuh, **Terbit**, Dzuhur, Ashar, Maghrib, Isya). Layout di-compress:
+    `ROW_H` 48→40, `ROW_GAP` 6→4, `ROW_START_Y` 110 — semua 6 baris muat di safeWidth bezel (verifikasi Node).
+  - **Terbit styling beda**: `C.textLo` (abu redup) vs `C.textHi` (putih) utk 5 waktu wajib — sinyal "info, bukan sholat".
+  - **Tanggal Hijriah** di header, DI BAWAH Masehi (`_hijriW`, C.textMd). Di-refresh juga di `refreshForNewDay`.
+- `page/theme.js`: BUILD b33 → **b34**.
+- **`zeus build` HIJAU** (exit 0). `page/prayer.bin` = 13771 B (meng-bundle prayer-calc + hijri-calc);
+  string `Muharram`/`Safar`/`HIJRI_OFFSET`/`terbit` terkonfirmasi di bin (zeus bundle import, bukan file terpisah).
+
+#### Verifikasi Terbit (engine asli, Node, Bogor 2026-07-21)
+- Subuh 04:45 (+2 ihtiyat) · **Terbit 06:05 (no ihtiyat)** · Dzuhur 12:01.
+- **Subuh < Terbit < Dzuhur ✓**. Selisih Terbit−Subuh = **80 menit** (1j20m).
+  ⚠ Catatan jujur: draft spec menduga "~15-20 menit setelah Subuh" — itu **tidak berlaku** utk Bogor di Juli.
+  Matahari terbit ~06:05 di Juli (Bogor dekat ekuator, UTC+7, deklinasi matahari +20° → sunrise agak lambat).
+  80 menit adalah nilai **astronomis benar** (cocok jadwal terbit Jakarta/Bogor Juli). Engine benar; asumsi spec salah.
+- `nextPrayer` di-probe di 12 jam berbeda (00:01…23:30) → **0 kali** return 'terbit'. Setelah Subuh (04:50)
+  langsung lompat ke Dzuhur. ✓ Terbit tidak pernah ter-highlight.
+
+#### Verifikasi Hijriah vs Kemenag/NU (2026-07-21)
+- Tabular pure (offset 0): 21 Jul 2026 → **5 Safar 1448**. Kemenag/NU publish **6 Safar 1448** (imkanur rukyat
+  mulai Safar 1 hari lebih awal) → `HIJRI_OFFSET = +1` agar cocok Kemenag.
+- Hasil `formatHijri` dgn offset +1 cocok **exact** dgn tabel Kemenag: 16 Jul=1 Safar, 18 Jul=3 Safar,
+  **21 Jul=6 Safar 1448** ✓.
+- ⚠ Offset BUKAN konstanta universal: hisab vs rukyat bisa beda ±1 hari di **batas bulan Hijri**. Offset +1
+  verified utk periode Safar 1448 (Jul 2026). **Re-check** saat mendekati Rajab→Sya'ban→Ramadhan —
+  koreksi `HIJRI_OFFSET` kalau app meleset 1 hari dari kalender NU/Ahmed.
+
 ### Verifikasi Akurasi Hitungan vs Kemenag (Bogor, Juli 2026)
 
 | Tanggal | Subuh (App/Ref) | Dzuhur (App/Ref) | Ashar (App/Ref) | Maghrib (App/Ref) | Isya (App/Ref) |
@@ -71,23 +107,23 @@ Sumber referensi: Kemenag RI (SIHAT/KEMENAG), Fajr 20°, Isha 18°, Asr Syafi'i.
 
 ### Verifikasi: Jadwal ambil tanggal LIVE dari sistem watch (BUKAN hardcode 20 Jul 2026) — TERVERIFIKASI 2026-07-20
 Dicek dari kode (bukan asumsi). Jawaban: **LIVE**, ikut tanggal sistem watch.
-- `page/prayer.js:232` → `var today = new Date()` di `build()`. `build()` jalan tiap page dibuka;
+- `page/prayer.js:245` → `var today = new Date()` di `build()`. `build()` jalan tiap page dibuka;
   `new Date()` = jam sistem watch (sumber sama dgn countdown `getNowMinutes()`, sudah terbukti jalan).
-- `page/prayer.js:247` → `today` live dilempar ke `calculate(today, …)`.
+- `page/prayer.js:262` → `today` live dilempar ke `calculate(today, …)`.
 - `page/prayer-calc.js:60-62` → `dayOfYear()` baca `getFullYear/getMonth/getDate` dari Date live. **0 konstanta tanggal.**
 - Grep literal `2026`/`'2026'`/`month:`/`day:` di prayer.js+prayer-calc.js → **0 hit**.
 - Tanpa `@zos/sensor` Time — tidak butuh, `new Date()` di Zepp = clock sistem (sudah diverifikasi via countdown).
 - Tes "set maju 1 hari lalu buka page" → **IKUT** (build re-run → new Date() fresh).
 - "20 Juli 2026" di tabel atas = **tabel referensi akurasi**, bukan konstanta kode.
-- Mekanisme refresh: 5 baris+tanggal fresh tiap `build()` (tiap buka page); countdown+highlight per-menit;
-  **+ midnight rollover** — tick per-menit juga deteksi ganti hari → recompute 5 baris+label (lihat ↓).
+- Mekanisme refresh: 6 baris + tanggal (Masehi+Hijri) fresh tiap `build()` (tiap buka page); countdown+highlight
+  per-menit; **+ midnight rollover** — tick per-menit juga deteksi ganti hari → recompute 6 baris+label (lihat ↓).
 
 **✓ Edge case FIXED (build `b33`, 2026-07-21) — bukan known-limitation lagi:**
 stale date kalau page dibiarkan foreground melewati tengah malam tanpa di-back. Fix di `page/prayer.js`:
-- `build()` simpan `_dateKey` ("YYYY-MM-DD") dari `new Date()` — `:248`.
-- Tiap tick `updateCountdown()` cek `dateKey(now) !== _dateKey` — `:195`. Mismatch = lewat tengah malam.
-- Mismatch → `refreshForNewDay(now)` — `:164`: recompute `_times = calculate(new Date(), …)`,
-  refresh label tanggal header (`_dateW`) + 5 nilai baris (`_rowTimeW[]`), advance `_dateKey`.
+- `build()` simpan `_dateKey` ("YYYY-MM-DD") dari `new Date()` — `:263`.
+- Tiap tick `updateCountdown()` cek `dateKey(now) !== _dateKey` — `:208`. Mismatch = lewat tengah malam.
+- Mismatch → `refreshForNewDay(now)` — `:174`: recompute `_times = calculate(new Date(), …)`,
+  refresh label Masehi (`_dateW`) + Hijri (`_hijriW`) + 6 nilai baris (`_rowTimeW[]`), advance `_dateKey`.
   Countdown+highlight ikut benar otomatis (pakai `_times` baru di tick yang sama).
 - **Tanpa timer baru** — pakai timer per-menit yang SUDAH ada (hemat, no extra beban).
 - **Terverifikasi via simulasi Node** (engine asli `prayer-calc` dilewatkan across midnight 2026-07-21→22):
@@ -97,7 +133,7 @@ stale date kalau page dibiarkan foreground melewati tengah malam tanpa di-back. 
 ## ⚠ Yang WAJIB diverifikasi Ahmed di watch (simulator bohong, AGENTS §1/§5)
 
 ### Gate H — Jadwal Sholat (SOAL IBADAH, teliti)
-1. **5 waktu sholat** tampil dengan benar: Subuh, Dzuhur, Ashar, Maghrib, Isya.
+1. **6 baris tampil** benar: Subuh, **Terbit**, Dzuhur, Ashar, Maghrib, Isya. Terbit tampil abu-redup (bukan putih).
 2. **Highlight sholat berikutnya** — row yang di-highlight sesuai dengan waktu aktual.
    Cek jam 10 pagi → Dzuhur ter-highlight. Cek jam 8 malam → Isya ter-highlight.
 3. **Countdown akurat** — bandingkan sisa menit dengan hitungan manual.
@@ -109,15 +145,24 @@ stale date kalau page dibiarkan foreground melewati tengah malam tanpa di-back. 
 8. **Verifikasi silang**: foto layar dikirim ke Ahmed → bandingkan 5 waktu dengan jadwal
    Kemenag/jadwalsholat.org untuk Bogor hari itu. Selisih maksimal ±2 menit.
 9. **Teks Arab di home card** "مواقيت الصلاة" + "اتجاه القبلة" — pastikan tidak tofu (☐).
+10. **Waktu Terbit masuk akal** — ~80 menit setelah Subuh (Bogor Juli: Subuh 04:45, Terbit ~06:05).
+    Bukan "15-20 menit" — lihat §Verifikasi Terbit. Terbit TANPA ihtiyat (bukan +2).
+11. **Terbit TIDAK pernah ter-highlight** sbg "sholat berikutnya" — setelah Subuh, highlight lompat ke Dzuhur.
+12. **6 baris + header + countdown MUAT** tanpa kepotong bezel (round 466). Tidak ada teks ter-clip lingkar luar.
+13. **Tanggal Hijriah** tampil di bawah Masehi (mis. "6 Safar 1448 H" utk 21 Jul 2026) — **bandingkan dgn kalender
+    NU/Kemenag**, catat selisih di PROJECT-STATE kalau ada. Offset +1 sudah di-set; re-check di bulan Hijri berikutnya.
 
 ## Next step
-- **Ahmed (gate H):** install 1.0.6 (BUILD `b32`) → uji 9 poin di atas → **LULUS eksplisit** → tag `stable-h1`.
+- **Ahmed (gate H):** install 1.0.6 (BUILD `b34`) → uji 13 poin di atas → **LULUS eksplisit** → tag `stable-h1`.
 - Setelah LULUS: **Batch J — Qibla** (compass + arah kiblat, `docs/prompts/04-BATCH-LANJUTAN.md`).
 
 ## Files touched (Batch H, committed)
-`page/prayer-calc.js` (baru — engine) · `page/prayer.js` (baru — layar) ·
+**b32 (engine+layar):** `page/prayer-calc.js` (engine) · `page/prayer.js` (layar) ·
 `page/index.js` (grid 2×3, 2 kartu baru) · `app.json` (daftar page, v1.0.6 code 7) ·
-`page/theme.js` (BUILD b32) · `docs/context/PROJECT-STATE.md` (file ini)
+`page/theme.js` · `docs/context/PROJECT-STATE.md`.
+**b33 (midnight rollover fix):** `page/prayer.js` + `page/theme.js` + PROJECT-STATE.
+**b34 (terbit + hijri):** `page/prayer-calc.js` (terbit no-ihtiyat, exclude nextPrayer) ·
+`page/hijri-calc.js` (BARU) · `page/prayer.js` (6 baris + hijri header) · `page/theme.js` (BUILD b34) · PROJECT-STATE.
 
 ## Checkpoint
 - **stable-b18** — Mushaf per-halaman awal (sebelum per-line rendering fix).

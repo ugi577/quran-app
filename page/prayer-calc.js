@@ -202,8 +202,12 @@ export function calculate(date, loc, method, madhab, ihtiyat) {
   var isyaRaw    = dhuhrHrs + tIsha
 
   // ── Ihtiyat (safety margin) + round to nearest minute ──
-  function toHHMM(hrs) {
-    var totalMin = Math.round(hrs * 60 + ihtiyat)
+  // `margin` overrides ihtiyat per-time: terbit (sunrise) passes 0 — only the 5
+  // obligatory prayers take the +2 min safety margin (Kemenag convention: sunrise
+  // is astronomical, not a prayer time, so no ihtiyat is added).
+  function toHHMM(hrs, margin) {
+    var add = (margin == null) ? ihtiyat : margin
+    var totalMin = Math.round(hrs * 60 + add)
     // Clamp to [0, 1439] (24h range) — handles rare edge cases near date line
     totalMin = ((totalMin % 1440) + 1440) % 1440
     var h = Math.floor(totalMin / 60)
@@ -215,7 +219,7 @@ export function calculate(date, loc, method, madhab, ihtiyat) {
 
   return {
     subuh:   toHHMM(subuhRaw),
-    terbit:  toHHMM(terbitRaw),
+    terbit:  toHHMM(terbitRaw, 0),   // sunrise: NO ihtiyat (only the 5 obligatory prayers get +2)
     dzuhur:  toHHMM(dzuhurRaw),
     ashar:   toHHMM(asharRaw),
     maghrib: toHHMM(maghribRaw),
@@ -247,7 +251,9 @@ export function toMinutes(hhmm) {
  * @returns {{ name: string, time: string }}
  */
 export function nextPrayer(times, nowMin, loc, method) {
-  var ORDER = ['subuh', 'terbit', 'dzuhur', 'ashar', 'maghrib', 'isya']
+  // 'terbit' (sunrise) is informational only — NOT an obligatory prayer — so it is
+  // excluded from next-prayer candidates and can never be highlighted as "next".
+  var ORDER = ['subuh', 'dzuhur', 'ashar', 'maghrib', 'isya']
 
   for (var i = 0; i < ORDER.length; i++) {
     var t = toMinutes(times[ORDER[i]])

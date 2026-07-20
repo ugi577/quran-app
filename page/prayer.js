@@ -7,7 +7,13 @@
 // CLEANUP: clearInterval in onDestroy — MANDATORY (AGENTS §3.6).
 // ROLLOVER: the per-minute tick also checks a date-key; if midnight passed since
 // build() (page left foreground across 00:00), it recomputes times + refreshes the
-// header date and all 5 row values. No new timer — reuses the existing one.
+// header Masehi + Hijri dates and all 6 row values (5 prayers + Terbit). No new
+// timer — reuses the existing one.
+// ROWS: 6 rows — Subuh, Terbit, Dzuhur, Ashar, Maghrib, Isya. Terbit (sunrise) is
+// informational only: styled dimmer (C.textLo) and never highlighted as "next prayer"
+// (excluded from nextPrayer candidates). Terbit uses NO ihtiyat (only the 5 do).
+// HIJRI: header shows the Hijri date below the Masehi date (page/hijri-calc.js,
+// tabular algorithm + HIJRI_OFFSET tuned to Kemenag/NU).
 //
 // VERIFIED APIs:
 //  - TEXT, FILL_RECT, ARC (from page/tasbih.js & page/index.js)
@@ -17,26 +23,29 @@ import * as hmUI from '@zos/ui'
 import { back } from '@zos/router'
 import { C, F, BUILD, safeWidth, centerX } from './theme'
 import { calculate, LOCATION, METHODS, MADHAB, toMinutes, nextPrayer, prayerNameId } from './prayer-calc'
+import { formatHijri } from './hijri-calc'
 
 // ═══════════════════════════════════════════
 // Layout constants (466×466 round, CX=CY=233)
 // ═══════════════════════════════════════════
 
 var CX = 233
-var HEADER_Y = 20
-var DATE_Y = 58
-var DIV_Y = 84
-var ROW_START_Y = 98
-var ROW_H = 48
-var ROW_GAP = 6
-var COUNTDOWN_Y = 374
-var COUNTDOWN_H = 60
+var HEADER_Y = 16     // city
+var DATE_Y = 52       // Masehi date
+var HIJRI_Y = 78      // Hijri date (NEW)
+var DIV_Y = 104
+var ROW_START_Y = 110 // first row
+var ROW_H = 40        // was 48 — compressed to fit 6 rows within the bezel
+var ROW_GAP = 4       // was 6 — tighter
+var COUNTDOWN_Y = 376
+var COUNTDOWN_H = 54
 
 var ROW_W = 300
 var BAR_W = 4
 
-// Prayer row order (display-only, excluding Terbit/Syuruq per common practice)
-var DISPLAY = ['subuh', 'dzuhur', 'ashar', 'maghrib', 'isya']
+// Render order: Terbit (sunrise) sits between Subuh and Dzuhur but is NOT an
+// obligatory prayer — styled dimmer and excluded from nextPrayer() candidates.
+var DISPLAY = ['subuh', 'terbit', 'dzuhur', 'ashar', 'maghrib', 'isya']
 
 // ═══════════════════════════════════════════
 // Module-scope state (so onDestroy can clean up)
@@ -47,6 +56,7 @@ var _intervalId = null
 var _times = null
 var _countdownW = null
 var _dateW = null
+var _hijriW = null
 
 // Widget refs for the 5 rows (to update highlights + refresh on date rollover)
 var _rowBgs = []    // FILL_RECT backgrounds
@@ -167,6 +177,9 @@ function refreshForNewDay(now) {
   try {
     _dateW.setProperty(hmUI.prop.MORE, { text: formatDate(now) })
   } catch (e) { /* ignore */ }
+  try {
+    _hijriW.setProperty(hmUI.prop.MORE, { text: formatHijri(now) })
+  } catch (e) { /* ignore */ }
   for (var i = 0; i < DISPLAY.length; i++) {
     try {
       _rowTimeW[i].setProperty(hmUI.prop.MORE, { text: _times[DISPLAY[i]] })
@@ -234,10 +247,12 @@ Page({
     // ══ Background ══
     fill(0, 0, 466, 466, C.bg)
 
-    // ══ Header: city name + date ══
+    // ══ Header: city + Masehi date + Hijri date ══
     label(LOCATION.city, 0, HEADER_Y, 466, 34, C.gold, F.h2)
 
     _dateW = label(formatDate(today), 0, DATE_Y, 466, 24, C.textMd, F.caption)
+
+    _hijriW = label(formatHijri(today), 0, HIJRI_Y, 466, 24, C.textMd, F.caption)
 
     // Divider
     var divW = safeWidth(DIV_Y, 1, 466)
@@ -254,11 +269,13 @@ Page({
       var key = DISPLAY[i]
       var rowY = ROW_START_Y + i * (ROW_H + ROW_GAP)
       var isNext = (key === next.name)
+      var isInfo = (key === 'terbit')   // sunrise: informational, dimmer, never highlighted
+      var nameColor = isInfo ? C.textLo : C.textHi
 
       var sw = safeWidth(rowY, ROW_H, ROW_W)
       var rowX = centerX(sw)
 
-      // Row background (visible only when highlighted)
+      // Row background (visible only when highlighted — Terbit never is)
       _rowBgs[i] = fill(rowX, rowY, sw, ROW_H, isNext ? C.emeraldSoft : C.bg)
 
       // Left accent bar
@@ -269,11 +286,11 @@ Page({
       var nameW = Math.floor(sw * 0.45) - BAR_W - 8
       var timeW = Math.floor(sw * 0.45)
 
-      labelLeft(prayerNameId(key), nameX, rowY, nameW, ROW_H, C.textHi, F.bodyLg)
+      labelLeft(prayerNameId(key), nameX, rowY, nameW, ROW_H, nameColor, F.bodyLg)
 
       // Prayer time (right-aligned)
       var timeX = rowX + sw - timeW - 4
-      _rowTimeW[i] = labelRight(_times[key], timeX, rowY, timeW, ROW_H, C.textHi, F.bodyLg)
+      _rowTimeW[i] = labelRight(_times[key], timeX, rowY, timeW, ROW_H, nameColor, F.bodyLg)
     }
 
     // ══ Countdown ══

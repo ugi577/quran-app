@@ -1,10 +1,10 @@
 # PROJECT-STATE — Quran Premium
-Updated: 2026-07-20 | Mesin: ryzencachy
+Updated: 2026-07-21 | Mesin: ryzencachy
 
 ## Batch: I — CLOSED (`stable-i1`)
 > Sebelumnya **Batch B — CLOSED (`stable-b27`)**. Lihat §Checkpoint.
 
-## Batch: H — Jadwal Sholat · WIP (build `b32`, v1.0.6) — MENUNGGU GATE AHMED
+## Batch: H — Jadwal Sholat · WIP (build `b33`, v1.0.6) — MENUNGGU GATE AHMED
 > Sebelumnya **Batch I — CLOSED (`stable-i1`)**. Lihat §Checkpoint.
 
 ## Done — Batch I (terverifikasi dari kode + build, BUKAN dari watch)
@@ -68,6 +68,31 @@ Updated: 2026-07-20 | Mesin: ryzencachy
 App output = Kemenag + 2 menit (ihtiyat). Dalam toleransi ±2 menit. ✓
 
 Sumber referensi: Kemenag RI (SIHAT/KEMENAG), Fajr 20°, Isha 18°, Asr Syafi'i.
+
+### Verifikasi: Jadwal ambil tanggal LIVE dari sistem watch (BUKAN hardcode 20 Jul 2026) — TERVERIFIKASI 2026-07-20
+Dicek dari kode (bukan asumsi). Jawaban: **LIVE**, ikut tanggal sistem watch.
+- `page/prayer.js:232` → `var today = new Date()` di `build()`. `build()` jalan tiap page dibuka;
+  `new Date()` = jam sistem watch (sumber sama dgn countdown `getNowMinutes()`, sudah terbukti jalan).
+- `page/prayer.js:247` → `today` live dilempar ke `calculate(today, …)`.
+- `page/prayer-calc.js:60-62` → `dayOfYear()` baca `getFullYear/getMonth/getDate` dari Date live. **0 konstanta tanggal.**
+- Grep literal `2026`/`'2026'`/`month:`/`day:` di prayer.js+prayer-calc.js → **0 hit**.
+- Tanpa `@zos/sensor` Time — tidak butuh, `new Date()` di Zepp = clock sistem (sudah diverifikasi via countdown).
+- Tes "set maju 1 hari lalu buka page" → **IKUT** (build re-run → new Date() fresh).
+- "20 Juli 2026" di tabel atas = **tabel referensi akurasi**, bukan konstanta kode.
+- Mekanisme refresh: 5 baris+tanggal fresh tiap `build()` (tiap buka page); countdown+highlight per-menit;
+  **+ midnight rollover** — tick per-menit juga deteksi ganti hari → recompute 5 baris+label (lihat ↓).
+
+**✓ Edge case FIXED (build `b33`, 2026-07-21) — bukan known-limitation lagi:**
+stale date kalau page dibiarkan foreground melewati tengah malam tanpa di-back. Fix di `page/prayer.js`:
+- `build()` simpan `_dateKey` ("YYYY-MM-DD") dari `new Date()` — `:248`.
+- Tiap tick `updateCountdown()` cek `dateKey(now) !== _dateKey` — `:195`. Mismatch = lewat tengah malam.
+- Mismatch → `refreshForNewDay(now)` — `:164`: recompute `_times = calculate(new Date(), …)`,
+  refresh label tanggal header (`_dateW`) + 5 nilai baris (`_rowTimeW[]`), advance `_dateKey`.
+  Countdown+highlight ikut benar otomatis (pakai `_times` baru di tick yang sama).
+- **Tanpa timer baru** — pakai timer per-menit yang SUDAH ada (hemat, no extra beban).
+- **Terverifikasi via simulasi Node** (engine asli `prayer-calc` dilewatkan across midnight 2026-07-21→22):
+  same-day tick (23:51) = mismatch false → no recompute; midnight tick (00:01) = mismatch true →
+  recompute + `_dateKey` advance ke 2026-07-22 + next=subuh hari baru. Logika date-key→recompute→refresh konfirmasi benar.
 
 ## ⚠ Yang WAJIB diverifikasi Ahmed di watch (simulator bohong, AGENTS §1/§5)
 

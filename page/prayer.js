@@ -5,6 +5,9 @@
 //
 // Timer: setInterval 60s for countdown, synced to minute boundary on load.
 // CLEANUP: clearInterval in onDestroy — MANDATORY (AGENTS §3.6).
+// ROLLOVER: the per-minute tick also checks a date-key; if midnight passed since
+// build() (page left foreground across 00:00), it recomputes times + refreshes the
+// header date and all 5 row values. No new timer — reuses the existing one.
 //
 // VERIFIED APIs:
 //  - TEXT, FILL_RECT, ARC (from page/tasbih.js & page/index.js)
@@ -45,9 +48,13 @@ var _times = null
 var _countdownW = null
 var _dateW = null
 
-// Widget refs for the 5 rows (to update highlights)
-var _rowBgs = []   // FILL_RECT backgrounds
-var _rowBars = []  // left accent bars
+// Widget refs for the 5 rows (to update highlights + refresh on date rollover)
+var _rowBgs = []    // FILL_RECT backgrounds
+var _rowBars = []   // left accent bars
+var _rowTimeW = []  // right-aligned time TEXT widgets (refreshed on midnight rollover)
+
+// Date-key ("YYYY-MM-DD") captured at build(); mismatch on a tick ⇒ midnight passed.
+var _dateKey = null
 
 // ═══════════════════════════════════════════
 // Inline UI helpers (mirrors page/tasbih.js)
@@ -99,6 +106,13 @@ function formatDate(d) {
   return d.getDate() + ' ' + BULAN[d.getMonth()] + ' ' + d.getFullYear()
 }
 
+/** Stable per-day key ("YYYY-MM-DD") used to detect midnight rollover. */
+function dateKey(d) {
+  var m = d.getMonth() + 1
+  var day = d.getDate()
+  return d.getFullYear() + '-' + (m < 10 ? '0' + m : m) + '-' + (day < 10 ? '0' + day : day)
+}
+
 // ═══════════════════════════════════════════
 // Countdown formatting
 // ═══════════════════════════════════════════
@@ -141,6 +155,26 @@ function minutesUntil(targetHhmm, nowMin) {
 // UI update helpers
 // ═══════════════════════════════════════════
 
+/**
+ * Recompute prayer times for a new day and refresh all date-dependent widgets:
+ * header date label + the 5 row time values. Called by updateCountdown() when the
+ * system date has changed since build() (page left foreground across midnight).
+ * Cheap: one calculate() + six setProperty calls. No new timer created.
+ */
+function refreshForNewDay(now) {
+  _times = calculate(now, LOCATION, METHODS.kemenag, MADHAB.shafii, 2)
+  _dateKey = dateKey(now)
+  try {
+    _dateW.setProperty(hmUI.prop.MORE, { text: formatDate(now) })
+  } catch (e) { /* ignore */ }
+  for (var i = 0; i < DISPLAY.length; i++) {
+    try {
+      _rowTimeW[i].setProperty(hmUI.prop.MORE, { text: _times[DISPLAY[i]] })
+    } catch (e) { /* ignore */ }
+  }
+  console.log('[prayer] date rollover — recomputed times for ' + _dateKey)
+}
+
 function updateHighlights(nextKey) {
   for (var i = 0; i < DISPLAY.length; i++) {
     var isNext = (DISPLAY[i] === nextKey)
@@ -154,7 +188,14 @@ function updateHighlights(nextKey) {
 }
 
 function updateCountdown() {
-  var nowMin = getNowMinutes()
+  var now = new Date()
+  // Midnight rollover check (uses the EXISTING per-minute timer — no new timer):
+  // if the system date changed since build(), recompute all date-dependent state
+  // before updating the countdown, so 5 rows + header stay correct across 00:00.
+  if (dateKey(now) !== _dateKey) {
+    refreshForNewDay(now)
+  }
+  var nowMin = now.getHours() * 60 + now.getMinutes()
   var next = nextPrayer(_times, nowMin, LOCATION, METHODS.kemenag)
   var remaining = minutesUntil(next.time, nowMin)
   try {
@@ -204,6 +245,7 @@ Page({
 
     // ══ 5 prayer rows ══
     _times = calculate(today, LOCATION, METHODS.kemenag, MADHAB.shafii, 2)
+    _dateKey = dateKey(today)
 
     var nowMin = getNowMinutes()
     var next = nextPrayer(_times, nowMin, LOCATION, METHODS.kemenag)
@@ -231,7 +273,7 @@ Page({
 
       // Prayer time (right-aligned)
       var timeX = rowX + sw - timeW - 4
-      labelRight(_times[key], timeX, rowY, timeW, ROW_H, C.textHi, F.bodyLg)
+      _rowTimeW[i] = labelRight(_times[key], timeX, rowY, timeW, ROW_H, C.textHi, F.bodyLg)
     }
 
     // ══ Countdown ══

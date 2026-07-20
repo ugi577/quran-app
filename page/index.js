@@ -70,7 +70,7 @@ Page({
     const CARDS = [
       { label: 'القرآن الكريم', url: 'page/surah-list' },
       { label: 'متابعة القراءة', url: 'page/reader' },
-      { label: 'التسبيح',        url: null },
+      { label: 'التسبيح',        url: 'page/tasbih' },
       { label: 'الإعدادات',      url: 'page/settings' },
     ]
 

@@ -5,8 +5,8 @@
     "appName": "Quran Premium",
     "appType": "app",
     "version": {
-      "code": 5,
-      "name": "1.0.4"
+      "code": 6,
+      "name": "1.0.5"
     },
     "icon": "icon.png",
     "vender": "zepp",
@@ -30,6 +30,7 @@
             "page/index",
             "page/reader",
             "page/surah-list",
+            "page/tasbih",
             "page/settings"
           ]
         }

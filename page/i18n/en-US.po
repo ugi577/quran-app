@@ -1,2 +1,29 @@
 msgid "example"
 msgstr "This is an example in device"
+
+msgid "qibla"
+msgstr "Qibla"
+
+msgid "facing_qibla"
+msgstr "Facing Qibla"
+
+msgid "aligned"
+msgstr "Aligned"
+
+msgid "turn_right"
+msgstr "Turn right"
+
+msgid "turn_left"
+msgstr "Turn left"
+
+msgid "locating"
+msgstr "Locating"
+
+msgid "waiting_gps"
+msgstr "Waiting for GPS"
+
+msgid "calibrate"
+msgstr "Move wrist in a figure 8"
+
+msgid "no_compass"
+msgstr "Compass unavailable"

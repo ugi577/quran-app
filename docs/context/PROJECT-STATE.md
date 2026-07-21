@@ -7,11 +7,11 @@ Updated: 2026-07-21 | Mesin: ryzencachy
 ## Batch: H — Jadwal Sholat · WIP (build `b37`, v1.0.6) — MENUNGGU GATE AHMED
 > Sebelumnya **Batch I — CLOSED (`stable-i1`)**. Lihat §Checkpoint.
 
-## Batch: J — Qibla · WIP (build `b40`, v1.0.7) — MENUNGGU GATE AHMED
+## Batch: J — Qibla · WIP (build `b41`, v1.0.8) — MENUNGGU GATE AHMED
 > Dikerjakan 2026-07-21. Qibla compass + bearing calculation + calibration UX.
 > b39: fix bug "kompas statis" (ARC wajib box x/y/w/h). b40: polish UI (bezel G-Shock + jarum emas).
-> ⚠ UX BERUBAH sejak b38: marker hijau → **jarum emas (arrowhead) + petunjuk "Putar X° ke kiri/kanan"**;
->   rose kini **bezel TETAP** (U/T/S/B statik), hanya jarum yang berputar. Lihat §b39/b40 di bawah.
+> **b41: REDESAIN — dial PNG full-screen berputar + pin Ka'bah mengorbit** (ganti bezel ARC b40).
+>   Lihat §b41 di bawah. ⚠ RISIKO TEKNIS TERBESAR: rotasi gambar di watch asli (belum difoto).
 
 ## Done — Batch I (terverifikasi dari kode + build, BUKAN dari watch)
 - **Tasbih counter — ARC ring, haptic, 5 preset dzikir, persist `qp.tasbih.v1` — LULUS gate Ahmed [2026-07-20]**
@@ -331,9 +331,74 @@ Referensi elemen desain mockup "Qiblah Watch" (gaya G-Shock) — **tema TETAP** 
 - Poin 4: "timeout 20s degraded" → **dihapus**; status live "Putar X°…" / "Sinyal lemah — kalibrasi ulang".
 - Poin 1/5/7/8/9/10 tetap berlaku. Tambah cek: **huruf U/T/S/B rapi tak miring**, **ikon Ka'bah pusat tampil**.
 
-## Next step
+### Done — Batch J b41: REDESAIN qibla — dial PNG berputar + deklinasi magnetik (2026-07-21)
+Menggantikan total qibla.js b40 (bezel ARC + jarum arrowhead) dgn **desain dial PNG full-screen**.
+Paradigma marine-compass: **rose (dial.png, tick + N/E/S/W) berputar**, **panah tengah + index atas TETAP**
+(mewakili arah hadap user), **pin Ka'bah mengorbit** ke sudut layar (qibla − heading). Saat hadap kiblat →
+pin mendarat di 12 o'clock bawah panah → alignment.
+
+- **`page/qibla.js` (ditulis ulang total):**
+  - **Dial berputar** = `widget.IMG` full-screen (466×466), `src:'raw/qibla/dial.png'`, dirotasi via
+    `setProperty(prop.MORE,{angle:-heading, center_x:233, center_y:233})`. `angle:0`= atas, diputar tiap poll.
+  - **Pin Ka'bah mengorbit** = `widget.IMG` 64×64, dipindah tiap frame via `setProperty(prop.MORE,{x,y})`
+    ke posisi lingkar (radius ORBIT=137; clear zone r<160 dial.png, aman bezel r213). Tidak dirotasi (marker).
+  - **Panah tengah** (arrow.png 74×52) + **index atas** (index.png 14×14) = `widget.IMG` statik.
+  - **Lock state ±4°** (TOL=4, spec desain): panah→arrow_lock, pin→pin_kaaba_lock, angka derajat→emerald,
+    status "✓ Menghadap kiblat" + **haptic sekali** (Vibrator SHORT_STRONG). Ring ARC b40 dihapus
+    (dial.png sudah isi rim sampai r229; tak ada band bersih utk ring tanpa bezel-clip — sinyal lock cukup
+    dari panah/pin/angka/status/haptic).
+  - **Deklinasi magnetik** (`magneticDeclination`, tabel 12 kota Indonesia) — true_heading = magnetic + decl.
+  - **LOKASI: REUSE `getLocation()`** dr `src/data/location.js` (sumber SAMA dgn Jadwal Sholat). Desain sumber
+    punya Geolocation()+localStorage('qibla_pos') sendiri — **dihapus**. Qibla ikut kota yg dipilih user.
+  - **Compass/Vibrator: static import** (proven b38), BUKAN `require()` dinamis dlm function (pola desain sumber).
+    `getStatus()`=**boolean** (bukan 0-3 yg desain sumber asumsikan; `st>=2` salah utk SDK ini).
+  - **Lifecycle**: onChange + poll 120ms (b39 lesson: onChange di-coalesce OS), debounce INVALID (6),
+    low-pass filter heading (SMOOTH=0.25) utk rotasi halus, degrade recover. `compass.stop()+offChange()+
+    clearTimeout+vib.stop()` di onDestroy. Log `[qibla] onDestroy — compass stopped`.
+  - **i18n**: string di-hardcode Indonesia (getText unproven di repo ini; tiap page hardcode). Teks diambil
+    dr id-ID.po desain sumber. `.po` tetap di-merge (lihat Files touched).
+  - **Warna** semua dari `page/theme.js` (C.bg/gold/emeraldBright/textHi/textMd/textLo). 0 hex di page.
+- **`page/qibla-calc.js` (MERGE, bukan duplikat):** formula `bearingToKaaba` & `distanceToKaaba` desain sumber
+  **identik** dgs yg sudah tertashih (Bogor 295° verified Node) → DIPERTAHANKAN. **Ditambah**: `magneticDeclination`
+  (+DECL_TABLE 12 kota), `norm`, `angleDiff`, `turnDirection` (dari utils/qibla desain sumber, konversi ES5).
+  Verifikasi Node: Bogor 295.3° BL/7935 km, decl Bogor 0.8° Jayapura 4.5°, angleDiff/turnDirection benar.
+- **Aset** `assets/raw/qibla/{dial,arrow,arrow_lock,pin_kaaba,pin_kaaba_lock,index}.png` (6 file, copy dr desain sumber).
+- `app.json`: version → **1.0.8 / code 10**. `page/theme.js`: BUILD b40 → **b41**. `page/i18n/{id-ID.po baru, en-US.po +9 key}`.
+- **`zeus build` HIJAU** (exit 0, 9 file JS). `page/qibla.bin` 13678 B. **6 PNG ter-bundle** di `device.zip`
+  (`assets/raw/qibla/*.png`, ter-verifikasi unzip). Gate hex lokal bersih: `rg "0x……" page | grep -v theme.js` → 0 hit.
+
+#### ⚠ PENYIMPANGAN DESAIN (terverifikasi, AGENTS rule #1) — wajib dibaca
+1. **`widget.IMG` bukan `IMG_POINTER`.** Desain sumber pakai `widget.IMG_POINTER`. IMG_POINTER **hanya
+   didokumentasikan di `/docs/watchface/`** (API watchface), dan `x`/`y`-nya = "titik poros di dlm gambar"
+   — di mana kode sumber mustahil (`x:201` di gambar 64px pin). `widget.IMG` (API **device-app**, API_LEVEL 2.0+)
+   mendukung rotasi SAMA (`angle`/`center_x`/`center_y`, `x/y`=top-left) dgn contoh resmi clock-hand — efek
+   visual identik, API terverifikasi. Pin mengorbit via translasi (marker tak perlu rotasi). Kalau Ahmed ingin
+   IMG_POINTER diuji spesifik: swap ke `widget.IMG_POINTER`, dial `{x:0,y:0,center_x:233,center_y:233}` (atau
+   `x:233,y:233` bila SDK pakai pivot-point), pin orbit via `angle` dgn canvas composite. Lihat memory
+   `[[zepp-zeus-bundles-only-icon-and-raw]]`.
+2. **Aset di `assets/raw/qibla/`** bukan root/subfolder. `zeus build` di project ini **hanya bundle
+   `assets/icon.png` + `assets/raw/**`** — PNG di root/subfolder lain (termasuk `assets/qibla/`) TIDAK ikut
+   (`PNG2TGA 2 files` = cuma icon). `default.r|.b|.s/` vestigial. Buktinya: unpack `.zab`→`.zpk`→`device.zip`.
+   Runtime path `'raw/qibla/dial.png'` resolve spt mushaf `'raw/data/quran/...'`. PNG di raw/ di-proses pipeline
+   Zepp (ukuran berubah: dial 45KB→231KB) → siap render. Memory baru: `zepp-zeus-bundles-only-icon-and-raw`.
+
+#### ⚠ WAJIB diverifikasi Ahmed di watch (build b41 — risiko teknis terbesar, BELUM difoto)
+1. **Dial BENAR-BENAR berputar** saat putar badan — foto SEBELUM & SESUDAH putar. (Risiko #1: rotasi widget.IMG
+   + apakah widget bisa render PNG dari `raw/`. Kalau dial/pin BLANK → cek: (a) aset ter-bundle? sudah ✓;
+   (b) widget IMG render dari raw/? (c) arah rotasi salah → flip `angle:-heading` → `+heading`.)
+2. **Ganti lokasi di Jadwal Sholat** → buka Qibla → bearing/jarak/kota **ikut berubah** (getLocation() shared).
+3. **Lock state ±4°**: hadap kiblat → panah+pin+angka hijau + "✓ Menghadap kiblat" + haptic.
+4. **Kalibrasi**: goyang angka 8 → status "Kalibrasi: gerakkan jam…" lalu hilang + dial bergerak.
+5. **Tanpa compass**: graceful — "Kompas tak tersedia — kiblat 295° BL", tidak crash.
+6. **Full-screen tak kepotong bezel**; tick/huruf N/E/S/W rapi; pin tak keluar lingkar saat orbit.
+7. **Pin Ka'bah** terlihat di ring & bergerak mengorbit; **panah tengah + index atas** tetap diam.
+8. Gate hex lokal bersih (sudah ✓ kode). Arah rotasi dial/konsistensi pin = verifikasi visual utama.
+> b41 MENGGANTIKAN poin Gate J b38/b40 (marker hijau/jarum emas/bezel ARC). Dial sekarang PNG berputar.
+> Poin lama (bearing benar, sensor mati di onDestroy, home card, teks Arab) tetap berlaku.
+
+
 - **Ahmed (gate H):** install 1.0.6 (BUILD `b37`, code 8) → uji 17 poin → **LULUS eksplisit** → tag `stable-h1`.
-- **Ahmed (gate J):** install 1.0.7 (BUILD `b40`, code 9) → uji poin di bawah (lihat §Superseded utk yang berubah) → **LULUS eksplisit** → tag `stable-j1`.
+- **Ahmed (gate J):** install 1.0.8 (BUILD `b41`, code 10) → uji poin §b41 di bawah (risiko #1: dial berputar) → **LULUS eksplisit** → tag `stable-j1`.
 
 ## Files touched (Batch H, committed)
 **b32 (engine+layar):** `page/prayer-calc.js` (engine) · `page/prayer.js` (layar) ·
@@ -353,6 +418,7 @@ digambar DI BAWAH text; ganti ikon CIRCLE di kanan kota + tapZone TOPMOST proven
 `page/index.js` (wire kartu qibla `null`→`'page/qibla'`) · `app.json` (page/qibla + compass perm + code 9) · `page/theme.js` (BUILD b38) · PROJECT-STATE.
 **b39 (fix statis):** `page/qibla.js` (ARC box x/y/w/h + poll + degrade recover + debounce + haptic + turn hint) · `page/theme.js` (BUILD b39) · PROJECT-STATE. **app.json TIDAK diubah.**
 **b40 (polish UI):** `page/qibla.js` (bezel G-Shock tetap + jarum emas arrowhead + Ka'bah glyph + layout) · `page/theme.js` (BUILD b40) · PROJECT-STATE. **app.json & qibla-calc.js TIDAK diubah.**
+**b41 (redesain dial PNG):** `page/qibla.js` (ditulis ulang — dial `widget.IMG` berputar + pin mengorbit + panah/index statik + lock ±4° + deklinasi) · `page/qibla-calc.js` (MERGE: +magneticDeclination/norm/angleDiff/turnDirection, pertahankan bearing tertashih) · `assets/raw/qibla/*.png` (6 BARU) · `page/i18n/id-ID.po` (BARU) + `en-US.po` (+9 key) · `app.json` (v1.0.8 code 10) · `page/theme.js` (BUILD b41) · PROJECT-STATE.
 
 ## ⚠ LESSON — verifikasi END-TO-END, bukan halaman berdiri sendiri (bug b35→b36)
 **Bug:** `page/location.js` b35 sudah lengkap + terdaftar di app.json, DAN ada "tombol" akses di prayer.js —

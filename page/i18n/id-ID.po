@@ -1,0 +1,26 @@
+msgid "qibla"
+msgstr "Kiblat"
+
+msgid "facing_qibla"
+msgstr "Menghadap Kiblat"
+
+msgid "aligned"
+msgstr "Arah tepat"
+
+msgid "turn_right"
+msgstr "Putar ke kanan"
+
+msgid "turn_left"
+msgstr "Putar ke kiri"
+
+msgid "locating"
+msgstr "Mencari posisi"
+
+msgid "waiting_gps"
+msgstr "Menunggu GPS"
+
+msgid "calibrate"
+msgstr "Gerakkan tangan pola angka 8"
+
+msgid "no_compass"
+msgstr "Kompas tidak tersedia"

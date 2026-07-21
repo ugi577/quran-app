@@ -1,96 +1,75 @@
-// Qibla compass — Quran Premium Batch J
+// Qibla compass — Quran Premium Batch J (b41 redesign)
 //
-// b40 (POLISH, murni visual — logika Compass/sensor & qibla-calc TIDAK diubah):
-//   Bezel tetap gaya G-Shock (ring + tick 30° + huruf U/T/S/B statik, presisi di
-//   tepi ring) + SATU jarum kiblat emas (arrowhead runcing) yang berputar ke arah
-//   qibla = (qiblaBearing − heading). Ikon Ka'bah minimalis di pusat. Layout
-//   vertikal dirapikan: header → ring → jarak → status → «Kembali (tak overlap).
-//   Semua ARC pakai bounding box x/y/w/h (helper arc()) — center_x/center_y milik
-//   CIRCLE saja; ARC menggambar di dalam kotak x/y/w/h.
+// Full-screen rotating dial + orbiting Ka'bah pin. Paradigm: the compass ROSE
+// (dial.png, with ticks + N/E/S/W) rotates, while the centre arrow and the top
+// index stay FIXED (they represent the direction the user faces — always "up",
+// since the watch is held facing the user). The Ka'bah pin orbits on the ring to
+// the screen angle (qibla − heading). When the user faces qibla, the pin lands
+// at 12 o'clock under the fixed arrow → alignment.
 //
-// b39 (fungsi): ARC box fix (root "statis"), poll ~120ms + throttle, degrade yang
-//   bisa pulih, debounce INVALID, haptic + petunjuk arah. setFreqMode TIDAK dipakai
-//   (API 4.0+, target 3.0).
+// ── Why widget.IMG, not IMG_POINTER (design-source deviation, verified) ──
+// The redesign source used widget.IMG_POINTER. IMG_POINTER is only documented
+// under /docs/watchface/ (watchface API), and its x/y mean "the image's own
+// rotation pivot pixel" — under which the source's pin coords (x:201 in a 64px
+// image) are impossible, i.e. the source was untested on a docs-faithful SDK.
+// The DEVICE-APP widget.IMG (docs.zepp.com/.../device-app-api/.../IMG, API_LEVEL
+// 2.0+) supports the SAME rotation (angle / center_x / center_y) with clear,
+// unambiguous semantics (x,y = widget top-left), proven by the official clock-
+// hand example. It achieves the identical rotating-dial effect on a verified
+// device-app API (AGENTS rule #1). The pin orbits via x/y translation each frame
+// (a marker needs no rotation).
+//
+// ── Reconciliations vs the redesign source ──
+//  • Colours → theme.js tokens (no hardcoded hex in the page; hex-gate clean).
+//  • Location → getLocation() from src/data/location (the SAME source Jadwal
+//    Sholat uses). The source's own Geolocation + localStorage('qibla_pos')
+//    was removed — Qibla must follow the city the user picked in Jadwal Sholat.
+//  • Compass/Vibrator → static import (proven since b38), not dynamic require().
+//  • getStatus() returns BOOLEAN (not 0–3 the source assumed) — calibrated = st.
+//  • i18n getText() → hardcoded Indonesian (getText is unproven in this repo;
+//    every other page hardcodes). Text taken from the redesign's id-ID.po.
+//  • Lock ±4° (design spec). Haptic once on align (Vibrator SHORT_STRONG).
+//  • Magnetic declination (Indonesia table) folded into qibla-calc.js.
 //
 // ⚠ PERMISSION: device:os.compass (app.json). Zepp OS 3.0+.
 
 import * as hmUI from '@zos/ui'
-import { back } from '@zos/router'
+import { setPageBrightTime } from '@zos/display'
 import { Compass, Vibrator, VIBRATOR_SCENE_SHORT_STRONG } from '@zos/sensor'
-import { C, F, BUILD, safeWidth, centerX } from './theme'
+import { C, F } from './theme'
 import { getLocation, locationLabel } from '../src/data/location'
-import { bearingToKaaba, directionLabel, distanceToKaaba } from './qibla-calc'
+import {
+  bearingToKaaba, directionLabel, distanceToKaaba,
+  magneticDeclination, norm, angleDiff, turnDirection,
+} from './qibla-calc'
+
+// ── geometry ──
+var W = 466, CX = 233, CY = 233
+var ORBIT = 137          // Ka'bah pin orbit radius (design value; pin spans r105–169, clear of bezel r213)
+var PIN = 64             // pin image edge
+var ARROW_W = 74, ARROW_H = 52
+var INDEX_S = 14
+var TOL = 4              // ±deg counted as "facing qibla" (design spec)
+var SMOOTH = 0.25        // heading low-pass factor
+var POLL_MS = 120        // compass poll (onChange alone is coalesced by the OS — b39 lesson)
+var LOST_DEBOUNCE = 6    // consecutive invalid reads before "calibrate" nudge
+var ASSET = 'raw/qibla/' // assets/raw/qibla/*.png — raw/ is the only wholesale-bundled asset folder here
 
 // ── helpers ──
-
 function label(text, x, y, w, h, color, size) {
   return hmUI.createWidget(hmUI.widget.TEXT, {
-    x, y, w, h, color,
-    text_size: size,
-    text,
-    align_h: hmUI.align.CENTER_H,
-    align_v: hmUI.align.CENTER_V,
+    x: x, y: y, w: w, h: h, color: color,
+    text_size: size, text: text,
+    align_h: hmUI.align.CENTER_H, align_v: hmUI.align.CENTER_V,
     text_style: hmUI.text_style.NONE,
   })
 }
 
 function fill(x, y, w, h, color) {
-  return hmUI.createWidget(hmUI.widget.FILL_RECT, { x, y, w, h, color })
+  return hmUI.createWidget(hmUI.widget.FILL_RECT, { x: x, y: y, w: w, h: h, color: color })
 }
 
-function tapZone(x, y, w, h, cb) {
-  var zone = hmUI.createWidget(hmUI.widget.FILL_RECT, { x, y, w, h, color: C.bg, alpha: 1 })
-  zone.addEventListener(hmUI.event.CLICK_DOWN, cb)
-  return zone
-}
-
-/** ARC with the correct x/y/w/h bounding box (ARC ignores center_x/center_y). */
-function arc(cx, cy, radius, startA, endA, lw, color) {
-  return hmUI.createWidget(hmUI.widget.ARC, {
-    x: cx - radius, y: cy - radius, w: radius * 2, h: radius * 2,
-    radius: radius,
-    start_angle: startA, end_angle: endA,
-    line_width: lw, color: color,
-  })
-}
-
-// ── geometry (compass centred on the screen centre) ──
-
-var CX = 233, CY = 233
-var RING_R = 100       // bezel ring + tick radius (compact — leaves room top+bottom)
-var LABEL_R = 76       // U/T/S/B just inside the rim (di tepi, tidak menempel garis)
-var ALIGN_TOL = 5      // ± degrees counted as "facing qibla"
-var POLL_MS = 120
-var LOST_DEBOUNCE = 6
-
-// Qibla arrowhead: tapering stack of ARCs, sharp apex at the rim pointing OUTWARD
-// to qibla (wide base near centre → sharp tip at the ring). One coherent gold needle.
-var HEAD_SEGS = [
-  { r: 84,  hw: 6.0, lw: 7 },
-  { r: 89,  hw: 4.5, lw: 8 },
-  { r: 94,  hw: 3.0, lw: 8 },
-  { r: 98,  hw: 1.7, lw: 7 },
-  { r: 100, hw: 0.7, lw: 6 },
-]
-
-// Fixed bezel cardinals (screen angle: 0 = top = U, clockwise).
-var CARDS = [
-  { txt: 'U', deg: 0 },
-  { txt: 'T', deg: 90 },
-  { txt: 'S', deg: 180 },
-  { txt: 'B', deg: 270 },
-]
-
-/** Screen-angle (0=top, clockwise) → ARC angle (0=3-o'clock, clockwise). */
-function toArc(screenAngle) { return screenAngle - 90 }
-
-/** Circular absolute difference in degrees, result in [0,180]. */
-function circAbs(d) {
-  d = ((d % 360) + 360) % 360
-  return d > 180 ? 360 - d : d
-}
-
-/** Indonesian thousands grouping, e.g. 7900 → "7.900". */
+/** Indonesian thousands grouping, e.g. 7935 → "7.935". */
 function idNum(n) {
   var s = String(n), out = '', c = 0
   for (var i = s.length - 1; i >= 0; i--) {
@@ -103,120 +82,135 @@ function idNum(n) {
 Page({
   build() {
     hmUI.setLayerScrolling(false)
-    fill(0, 0, 466, 466, C.bg)
+    try { setPageBrightTime({ brightTime: 120000 }) } catch (e) { console.log('[qibla] brightTime: ' + e) }
+    fill(0, 0, W, W, C.bg)
 
-    // ── location + bearing ──
+    // ── location + bearing (REUSED from src/data/location — same as Jadwal Sholat) ──
     var loc = getLocation()
-    var qiblaDeg = Math.round(bearingToKaaba(loc.lat, loc.lon))
-    var qiblaDir = directionLabel(qiblaDeg)
-    var locLbl = locationLabel(loc)
+    var qibla = bearingToKaaba(loc.lat, loc.lon)
+    var declination = magneticDeclination(loc.lat, loc.lon)
     var distKm = distanceToKaaba(loc.lat, loc.lon)
+    var qiblaDir = directionLabel(qibla)
+    var locLbl = locationLabel(loc)
 
-    // ── header ──
-    label('Arah Kiblat', 0, 14, 466, 24, C.textMd, F.caption)
-    label(qiblaDeg + '° ' + qiblaDir, 0, 40, 466, 46, C.gold, F.h1)
-    label(locLbl, 0, 88, 466, 22, C.textLo, F.caption)
+    // ── rotating dial (full-screen IMG, rotates around screen centre) ──
+    var dial = hmUI.createWidget(hmUI.widget.IMG, {
+      x: 0, y: 0, w: W, h: W,
+      pos_x: 0, pos_y: 0,
+      center_x: CX, center_y: CY,
+      src: ASSET + 'dial.png', angle: 0,
+    })
 
-    // ── bezel ring (thicker, clearer) ──
-    arc(CX, CY, RING_R, 0, 360, 3, C.stroke)
+    // ── orbiting Ka'bah pin (translated each frame; initial = top of ring) ──
+    var pin = hmUI.createWidget(hmUI.widget.IMG, {
+      x: CX - PIN / 2, y: CY - ORBIT - PIN / 2,
+      src: ASSET + 'pin_kaaba.png',
+    })
 
-    // ── tick marks every 30° + cardinals bolder (static bezel) ──
-    for (var t = 0; t < 12; t++) {
-      var td = t * 30
-      var isCard = (td % 90 === 0)
-      var ac = toArc(td)
-      var thw = isCard ? 1.4 : 0.6
-      arc(CX, CY, RING_R, ac - thw, ac + thw, isCard ? 8 : 4, isCard ? C.gold : C.goldDim)
-    }
+    // ── fixed top index (12 o'clock reference) ──
+    hmUI.createWidget(hmUI.widget.IMG, {
+      x: CX - INDEX_S / 2, y: 22, src: ASSET + 'index.png',
+    })
 
-    // ── cardinal letters U/T/S/B — fixed, precise, upright, not bold ──
-    for (var i = 0; i < CARDS.length; i++) {
-      var sr = CARDS[i].deg * Math.PI / 180
-      var lx = Math.round(CX + LABEL_R * Math.sin(sr))
-      var ly = Math.round(CY - LABEL_R * Math.cos(sr))
-      label(CARDS[i].txt, lx - 18, ly - 17, 36, 34, C.textMd, 28)
-    }
+    // ── fixed centre arrow (user's facing direction; swaps to green on lock) ──
+    var arrow = hmUI.createWidget(hmUI.widget.IMG, {
+      x: CX - ARROW_W / 2, y: CY - 96, src: ASSET + 'arrow.png',
+    })
 
-    // ── Ka'bah glyph at centre (geometric silhouette — Zepp TEXT tak render emoji:
-    //    kotak hitam ber-outline emas + pita hizam emas) ──
-    fill(CX - 23, CY - 23, 46, 46, C.gold)   // gold border base
-    fill(CX - 19, CY - 19, 38, 38, C.bg)     // black cube (leaves ~4px gold edge)
-    fill(CX - 19, CY - 5, 38, 5, C.goldDim)  // hizam band
-
-    // ── qibla arrowhead (DYNAMIC) — created here, positioned by drawRose ──
-    var _head = []
-    for (var s = 0; s < HEAD_SEGS.length; s++) {
-      var seg = HEAD_SEGS[s]
-      _head.push(arc(CX, CY, seg.r, toArc(0) - seg.hw, toArc(0) + seg.hw, seg.lw, C.gold))
-    }
-
-    // ── distance to the Ka'bah (below the ring) ──
-    label('~' + idNum(distKm) + ' km ke Ka\'bah', 0, 337, 466, 24, C.textLo, F.caption)
-
-    // ── calibration / turn-hint status (below distance) ──
-    var _statusW = label('', 0, 365, 466, 28, C.textLo, F.caption)
-
-    // ── back button (safe bezel — proven b38 config, lebar ≈125px di y=396) ──
-    var btnY = 396, btnH = 38
-    var btnW = safeWidth(btnY, btnH)
-    var btnX = centerX(btnW)
-    label('« Kembali', btnX, btnY, btnW, btnH, C.goldDim, F.label)
-    tapZone(btnX, btnY, btnW, btnH, function () { back() })
-
-    // ── BUILD marker ──
-    label(BUILD, 0, 442, 466, 16, C.textLo, 14)
+    // ── texts over the dial centre ──
+    var deg = label('0°', 0, CY - 36, W, 74, C.textHi, F.h1)
+    var info = label(
+      'Kiblat ' + Math.round(qibla) + '° ' + qiblaDir + '  ·  ' + idNum(distKm) + ' km  ·  ' + locLbl,
+      0, CY + 46, W, 24, C.textLo, 18
+    )
+    var status = label('', 0, 312, W, 26, C.textLo, F.label)
 
     function setStatus(text, color) {
-      _statusW.setProperty(hmUI.prop.MORE, { text: text, color: color })
+      status.setProperty(hmUI.prop.MORE, { text: text, color: color })
     }
 
-    // ── qibla needle placement (ONLY the arrowhead moves; bezel is fixed) ──
-    // heading = watch-top bearing CW from true north (getDirectionAngle semantics).
-    // Qibla lands at screen angle P = (qiblaBearing − heading), 0 = top, CW.
-    function drawRose(heading, live) {
-      var P = (qiblaDeg - heading + 360) % 360
-      var delta = ((P + 180) % 360) - 180  // >0 qibla to the right, <0 to the left
-      var aligned = live && Math.abs(delta) <= ALIGN_TOL
-      var col = aligned ? C.goldBright : C.gold
-      var acP = toArc(P)
-      for (var k = 0; k < _head.length; k++) {
-        _head[k].setProperty(hmUI.prop.MORE, {
-          start_angle: acP - HEAD_SEGS[k].hw,
-          end_angle: acP + HEAD_SEGS[k].hw,
-          color: col,
-        })
+    // ── heading state (true north, low-pass smoothed) ──
+    var heading = 0
+    var firstReading = true
+    var wasAligned = false
+
+    function smoothHeading(raw) {
+      var d = ((raw - heading + 540) % 360) - 180
+      heading = norm(heading + d * SMOOTH)
+    }
+
+    /** Place the dial + pin for the current heading; update lock state. */
+    function draw() {
+      // Dial rotates OPPOSITE to heading (paradigm-2 compass: the rose turns so
+      // the faced cardinal slides under the fixed top index).
+      dial.setProperty(hmUI.prop.MORE, { angle: -heading, center_x: CX, center_y: CY })
+
+      // Pin orbits to the qibla screen angle (0 = top).
+      var P = norm(qibla - heading)
+      var pr = P * Math.PI / 180
+      var pcx = CX + ORBIT * Math.sin(pr)
+      var pcy = CY - ORBIT * Math.cos(pr)
+      pin.setProperty(hmUI.prop.MORE, {
+        x: Math.round(pcx - PIN / 2), y: Math.round(pcy - PIN / 2),
+      })
+
+      deg.setProperty(hmUI.prop.MORE, { text: Math.round(heading) + '°' })
+
+      var off = angleDiff(heading, qibla)
+      var nowLocked = off <= TOL
+      if (nowLocked !== wasAligned) {
+        wasAligned = nowLocked
+        applyLock(nowLocked)
       }
-      return delta
+      if (nowLocked) {
+        setStatus('✓ Menghadap kiblat', C.emeraldBright)
+      } else {
+        var turn = turnDirection(heading, qibla)
+        setStatus('Putar ' + Math.round(off) + '° ke ' + (turn > 0 ? 'kanan' : 'kiri'), C.textMd)
+      }
     }
 
-    // ── COMPASS SENSOR (unchanged from b39) ──
-    var _compass = null
-    var _hasCompass = false
-    var _everLive = false
-    var _wasAligned = false
-    var _lastHeading = null
-    var _invalidStreak = 0
-    var _stopped = false
-    var _pollId = null
+    /** Swap arrow/pin/degree colour on the align transition; haptic once on lock. */
+    function applyLock(on) {
+      var P = norm(qibla - heading), pr = P * Math.PI / 180
+      var px = Math.round(CX + ORBIT * Math.sin(pr) - PIN / 2)
+      var py = Math.round(CY - ORBIT * Math.cos(pr) - PIN / 2)
+      pin.setProperty(hmUI.prop.MORE, {
+        src: ASSET + (on ? 'pin_kaaba_lock.png' : 'pin_kaaba.png'),
+        x: px, y: py,
+      })
+      arrow.setProperty(hmUI.prop.MORE, { src: ASSET + (on ? 'arrow_lock.png' : 'arrow.png') })
+      deg.setProperty(hmUI.prop.MORE, { color: on ? C.emeraldBright : C.textHi })
+      if (on) buzz()
+    }
 
-    var _vib = null
-    try { _vib = new Vibrator() } catch (e) { console.log('[qibla] vibrator init failed: ' + e) }
+    // ── Compass sensor (proven b38–b40 lifecycle: onChange + poll, boolean status) ──
+    var compass = null
+    var hasCompass = false
+    var stopped = false
+    var pollId = null
+    var invalidStreak = 0
+    var cb = null
+
+    var vib = null
+    try { vib = new Vibrator() } catch (e) { console.log('[qibla] vibrator init: ' + e) }
     function buzz() {
-      try { if (_vib) { _vib.setMode(VIBRATOR_SCENE_SHORT_STRONG); _vib.start() } }
-      catch (e) { console.log('[qibla] buzz err: ' + e) }
+      try {
+        if (vib) { vib.setMode(VIBRATOR_SCENE_SHORT_STRONG); vib.start() }
+      } catch (e) { console.log('[qibla] buzz: ' + e) }
     }
 
     function readCompass() {
-      if (!_hasCompass) return { ok: false }
+      if (!hasCompass) return { ok: false }
       try {
-        var st = _compass.getStatus()
-        var a = _compass.getDirectionAngle()
+        var st = compass.getStatus()
+        var a = compass.getDirectionAngle()
         if (!st || a === 'INVALID') return { ok: false }
         var h = Number(a)
         if (isNaN(h)) return { ok: false }
-        return { ok: true, heading: ((h % 360) + 360) % 360 }
+        return { ok: true, heading: norm(h + declination) } // magnetic → true north
       } catch (e) {
-        console.log('[qibla] read err: ' + e)
+        console.log('[qibla] read: ' + e)
         return { ok: false }
       }
     }
@@ -224,66 +218,59 @@ Page({
     function tick() {
       var r = readCompass()
       if (!r.ok) {
-        _invalidStreak++
-        if (_everLive && _invalidStreak >= LOST_DEBOUNCE) {
-          setStatus('Sinyal kompas lemah — kalibrasi ulang (angka 8)', C.textLo)
+        invalidStreak++
+        if (invalidStreak >= LOST_DEBOUNCE) {
+          setStatus('Sinyal kompas lemah — gerakkan jam membentuk angka 8', C.textLo)
         }
         return
       }
-      _invalidStreak = 0
-      var h = r.heading
-      if (_everLive && _lastHeading !== null && circAbs(h - _lastHeading) < 1) return
-      _lastHeading = h
-      _everLive = true
-
-      var delta = drawRose(h, true)
-      if (Math.abs(delta) <= ALIGN_TOL) {
-        setStatus('✓ Menghadap kiblat', C.emeraldBright)
-        if (!_wasAligned) { buzz(); _wasAligned = true }
-      } else {
-        _wasAligned = false
-        setStatus('Putar ' + Math.abs(Math.round(delta)) + '° ke ' + (delta > 0 ? 'kanan' : 'kiri'), C.textMd)
-      }
+      invalidStreak = 0
+      if (firstReading) { heading = r.heading; firstReading = false }
+      else smoothHeading(r.heading)
+      draw()
     }
 
-    // Initial static preview (north-up) so the needle is never blank.
-    drawRose(0, false)
+    // Static north-up preview so the dial is never blank before the first read.
+    draw()
 
     try {
       var c = new Compass()
-      if (c && typeof c.start === 'function') { _compass = c; _hasCompass = true }
+      if (c && typeof c.start === 'function') { compass = c; hasCompass = true }
     } catch (e) {
       console.log('[qibla] Compass construction failed: ' + e)
     }
 
-    if (_hasCompass) {
+    if (hasCompass) {
       setStatus('Kalibrasi: gerakkan jam membentuk angka 8', C.textLo)
-      var _cb = function () { tick() }
+      cb = function () { tick() }
       try {
-        _compass.onChange(_cb)
-        _compass.start()
+        compass.onChange(cb)
+        compass.start()
         tick()
         var loop = function () {
-          if (_stopped) return
+          if (stopped) return
           tick()
-          _pollId = setTimeout(loop, POLL_MS)
+          pollId = setTimeout(loop, POLL_MS)
         }
-        _pollId = setTimeout(loop, POLL_MS)
-
-        this._compassCleanup = function () {
-          _stopped = true
-          if (_pollId) { clearTimeout(_pollId); _pollId = null }
-          try { _compass.offChange(_cb) } catch (e) {}
-          try { _compass.stop() } catch (e) {}
-          try { if (_vib) _vib.stop() } catch (e) {}
-          console.log('[qibla] onDestroy — compass stopped')
-        }
+        pollId = setTimeout(loop, POLL_MS)
       } catch (e) {
         console.log('[qibla] Compass start failed: ' + e)
-        setStatus('Kompas tak tersedia — arahkan atas jam ke jarum emas', C.textLo)
+        hasCompass = false
       }
-    } else {
-      setStatus('Kompas tak tersedia — arahkan atas jam ke jarum emas', C.textLo)
+    }
+    if (!hasCompass) {
+      setStatus('Kompas tak tersedia — kiblat ' + Math.round(qibla) + '° ' + qiblaDir, C.textLo)
+    }
+
+    this._compassCleanup = function () {
+      stopped = true
+      if (pollId) { clearTimeout(pollId); pollId = null }
+      if (compass) {
+        try { if (cb) compass.offChange(cb) } catch (e) {}
+        try { compass.stop() } catch (e) {}
+      }
+      try { if (vib) vib.stop() } catch (e) {}
+      console.log('[qibla] onDestroy — compass stopped')
     }
   },
 

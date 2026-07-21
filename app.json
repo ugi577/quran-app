@@ -5,8 +5,8 @@
     "appName": "Quran Premium",
     "appType": "app",
     "version": {
-      "code": 9,
-      "name": "1.0.7"
+      "code": 10,
+      "name": "1.0.8"
     },
     "icon": "icon.png",
     "vender": "zepp",
